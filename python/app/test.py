@@ -1,4 +1,4 @@
-from flask import Flask, json, jsonify, request
+from flask import Flask, json, jsonify, request, render_template
 import logging, time, psycopg2
 
 app = Flask(__name__)
@@ -97,6 +97,11 @@ def changeAuction(leilaoId):
     content = {'operation': 'change auction details', 'leilaoId': leilaoId, 
         'erro': 'not yet implemented', 'payload': payload}
     return jsonify(content)
+
+# Not so hidden easter egg
+@app.route('/bangers')
+def banger1():
+    return render_template("gift.html")
 
 # Connect to db
 def db_conn():
