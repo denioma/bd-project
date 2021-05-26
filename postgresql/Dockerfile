@@ -7,13 +7,12 @@
 #   BD 2021 Team - https://dei.uc.pt/lei/
 #   University of Coimbra
 
-FROM library/postgres
+FROM postgres:latest
 
+ENV POSTGRES_USER admin
+ENV POSTGRES_PASSWORD projadmin
+ENV POSTGRES_DB auctions
 
-ENV POSTGRES_USER aulaspl
-ENV POSTGRES_PASSWORD aulaspl
-ENV POSTGRES_DB dbfichas
-
-COPY BD2021_data.sql /docker-entrypoint-initdb.d/
+COPY setup.sql /docker-entrypoint-initdb.d/
 
 EXPOSE 5432
