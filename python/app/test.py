@@ -8,7 +8,8 @@ app = Flask(__name__)
 
 @app.route('/')
 def landing():
-    return 'Welcome to the Auction House!'
+    return """Welcome to the Auction House!<br>
+            I have a splitting headache"""
 
 @app.route("/dbproj/user", methods=['POST'])
 def register():
@@ -41,11 +42,12 @@ def register():
                         (email, username, password))
                     logger.debug(f"Query {cursor.query} ")
                     content['status'] = 'registered'
-                except psycopg2.errors.UniqueViolation as e:
+                except psycopg2.errors.UniqueViolation:
                     content['erro'] = 'username already in use'
         conn.close()
     return jsonify(content)
     
+# Authenticate a user
 @app.route('/dbproj/user', methods=['PUT'])
 def auth():
     logger.info("PUT /dbproj/user")
@@ -76,6 +78,7 @@ def auth():
                     if password == hash:
                         logger.debug("Authenticated")
                         content['authenticated'] = 'true'
+                        content['authToken'] = getToken(username)
                     else:
                         logger.debug("Authentication failed")
                         content['authenticated'] = 'false'
@@ -92,50 +95,53 @@ def auth():
 def newAuction():
     logger.info("POST /dbproj/leilao")
     content = {'operation': 'create a new auction'}
-    payload = request.get_json();
-
+    payload = request.get_json()
+    
     # Check for required request body fields
-    required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends'}
-    if set(payload.keys()).intersection(required) != required:
-        content['error'] = 'pedido inválido'
-        return jsonify(content)
+    required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends', 'authToken'}
+    fields = set(payload.keys())
+    diff = list(required.difference(fields))
+    if len(diff) > 0:
+        return jsonify({'Error': f'Missing fields {diff}'})
 
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
     # TODO Criar um leilão na DB
+    token = readToken(payload['authToken'])
     content['payload'] = dict()
     for key in required:
-        content['payload'].update({key: payload[key]})
-    """
+        if key != 'jwt': content['payload'].update({key: payload[key]})
     date = payload['ends']
     date = date[:date.find(" (")]
     content['payload']['ends'] = date
     date = datetime.strptime(date, "%a %b %d %Y %H:%M:%S %Z%z")
-    """
-    # sql = """INSERT INTO auction VALUES 
-    #   (%%(artigoId)s, %%(precoMinimo)s, %%(preco)s, %%(titulo)s, %%(descricao)s, %%(ends)s)"""
-    """
-    args = {}
+    sql = """INSERT INTO auction (seller, itemid, minprice, price, title, description, ends) VALUES 
+      (%(seller)s, %(artigoId)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)"""
+    args = {'seller': token['username']}
     for key in required:
-        if key != 'ends': 
-            args.update({key, payload[key]})
-    conn = dbConn()
-    if conn is not None:
-        with conn:
-            with conn.cursor() as cursor:
-                try:
-                    cursor.execute(sql, ())
-                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                except psycopg2.DataError:
-                    content['error'] = 'DB Exception: DataError'
-        conn.close()
-    else content['error'] = "Connection to db failed"
-    """
-    content['error'] = 'not yet implemented'
+        if key != 'ends':
+            args.update({key: payload[key]})
+    args.update({'ends': date})
+    logger.debug(args)
+    with conn:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute(sql, args)
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+            except psycopg2.DataError:
+                content['error'] = 'DB Exception: DataError'
+    conn.close()
     return jsonify(content)
 
 # TODO Get auction details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['GET'])
 def getAuction(leilaoId):
     logger.info(f"GET /dbproj/leilao/{leilaoId}")
+    payload = request.get_json()
+    if 'authToken' not in payload.keys():
+        return jsonify({'Error': 'Missing authToken'})
+    
     content = {'operation': 'get auction details', 'leilaoId': leilaoId}
     conn = dbConn()
     if conn is not None:
@@ -209,29 +215,43 @@ def listAuctions():
 @app.route('/dbproj/leiloes/<keyword>', methods=['GET'])
 def searchAuctions(keyword):
     logger.info(f"GET /dbproj/leiloes/{keyword}")
-    content = {'operation': 'search for open auction', 'keyword': keyword}
+    content = {'Operation': 'Search for open auction', 'Keyword': keyword}
     conn = dbConn()
     if conn is not None:
         with conn:
+            # TODO Uncomment full query after changing itemid to VARCHAR
+            # sql = """SELECT auction.itemid, auction.description
+            #         FROM auction WHERE auction.itemid = %(keyword)s 
+            #         OR auction.description LIKE %(regex)s"""
             sql = """SELECT auction.itemid, auction.description
-                    FROM auction WHERE auction.itemid = %(keyword)s 
-                    OR auction.description like '%%%(keyword)s%%'"""
+                    FROM auction WHERE auction.description like %(regex)s
+                    ORDER BY auction.itemid"""
             with conn.cursor() as cursor:
-                cursor.execute(sql, {'keyword': keyword})
+                cursor.execute(sql, {'keyword': keyword, 'regex': f'%{keyword}%'})
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                if cursor.rowcount > 0:
-                    pass
-        conn.close
-    else: content['erro'] = 'Connection to db failed'
+                if cursor.rowcount > 0: 
+                    content['Results'] = cursor.fetchall()
+                else: 
+                    content = {'Error': 'No results found'}
+        conn.close()
+    else: 
+        content['Error'] = 'Connection to database failed'
     return jsonify(content)
 
 # Bid on an open auction
 @app.route('/dbproj/licitar/leilao/<leilaoId>/<licitacao>', methods=['GET'])
 def bidAuction(leilaoId, licitacao):
     logger.info(f"GET /dbproj/licitar/leilao/{leilaoId}/{licitacao}")
+    required = {'jwt'}
+    payload = request.get_json()
+    fields = set(payload.keys())
+    diff = list(required.difference(fields))
+    if len(diff) > 0:
+        return jsonify({'erro': 'missing auth token'})
     content = {'operation': 'bid on open auction', 'leilaoId': leilaoId, 'licitacao': licitacao}
     conn = dbConn()
     if conn is not None:
+        username = readToken(payload['jwt'])['username']
         with conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT price FROM auction WHERE itemid = %s;", (leilaoId,))
@@ -241,8 +261,18 @@ def bidAuction(leilaoId, licitacao):
                     if licitacao <= currentPrice:
                         content['erro'] = 'Bid is lower than current price'
                     else:
-                        # TODO bid on an auction
-                        content['erro'] = 'not yet implemented'
+                        statement = """INSERT INTO bid (itemid, b_date, price, bidder) 
+                        VALUES (
+                            %(itemid)s, 
+                            current_timestamp, 
+                            %(price)s,
+                            %(bidder)s)
+                        """
+                        try:
+                            cursor.execute(statement, (leilaoId, licitacao, username))
+                            content['status'] = 'Sucess'
+                        except psycopg2.Error as e:
+                            logger.debug(e.diag.message_primary)
                 else: content['erro'] = 'Auction not found'
         conn.close()
     else: content['erro'] = 'Connection to db failed'
@@ -256,6 +286,31 @@ def changeAuction(leilaoId):
     content = {'operation': 'change auction details', 'leilaoId': leilaoId, 
         'erro': 'not yet implemented', 'payload': payload}
     return jsonify(content)
+
+# Post a message
+@app.route('/dbproj/message/<leilaoId>', methods=['POST'])
+def postMessage(leilaoId):
+    logger.info(f"POST /dbproj/message/{leilaoId}")
+    payload = request.get_json()
+    required = {'jwt', 'message'}
+    fields = set(payload.keys())
+    diff = list(required.difference(fields))
+    if len(diff) > 0:
+        return jsonify({'erro': f'missing body fields: {diff}'})
+    jwt = payload['jwt']
+    msg = payload['message']
+    token = readToken(jwt)
+    conn = dbConn()
+    if conn is not None:
+        return jsonify({'erro': 'not yet implemented'})
+        """
+        with conn:
+            with conn.cursor() as cursor:
+                pass
+            conn.close()
+        """
+    else: return jsonify({'erro': 'connection to db failed'})
+    
 
 # Not so hidden easter egg
 @app.route('/bangers')
@@ -276,6 +331,22 @@ def getKey():
         key = f.read()
         f.close()
     return key
+
+# Get JWT for user
+def getToken(username):
+    payload = {'username': username}
+    return jwt.encode(payload, getKey(), algorithm='HS256')
+
+# Read user token
+def readToken(token):
+    logger.debug(f"Decoding token {token}")
+    try:
+        decoded = jwt.decode(token, getKey(), algorithms='HS256') 
+        logger.debug("Valid token")
+    except jwt.InvalidSignatureError:
+        logger.debug(f"Invalid token signature")
+        decoded = None
+    return decoded
 
 ##########################
 #          Main          #

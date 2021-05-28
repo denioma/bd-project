@@ -1,6 +1,6 @@
-# Base de Dados - PostgreSQL DBMS
+# Base de Dados - REST API
 
-This folder contains all the dependencies needed to set up the DBMS for the Auction House
+This folder contains all the dependencies needed to set up the REST API for the Auction House.
 
 ## Requirements
 

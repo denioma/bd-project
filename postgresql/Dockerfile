@@ -13,6 +13,6 @@ ENV POSTGRES_USER admin
 ENV POSTGRES_PASSWORD projadmin
 ENV POSTGRES_DB auctions
 
-COPY setup.sql /docker-entrypoint-initdb.d/
+COPY sql/setup.sql /docker-entrypoint-initdb.d/
 
 EXPOSE 5432
