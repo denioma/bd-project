@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask import Flask, json, jsonify, request, render_template
-# from cryptography.fernet import Fernet
-# import jwt
+import hashlib
+import jwt
 import logging, time, psycopg2
 
 app = Flask(__name__)
@@ -10,7 +10,6 @@ app = Flask(__name__)
 def landing():
     return 'Welcome to the Auction House!'
 
-# TODO Register a user in the DB
 @app.route("/dbproj/user", methods=['POST'])
 def register():
     logger.info("POST /dbproj/users")
@@ -26,20 +25,27 @@ def register():
     content['payload'] = dict()
     for key in required:
         content['payload'].update({key: payload[key]})
-    # TODO Registar utilizador na DB e retornar userId/mensagem de erro
     username = payload['username']
     email = payload['email']
-    # password = encrypt(bytes(payload['password'], 'utf-8'))
     password = payload['password']
+    password = password.encode()
+    # TODO Change password hashing to a more secure scheme
+    password = hashlib.sha256(password).digest()
+    logger.debug(f"Hash = {password}")
     conn = dbConn()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO db_user (email, username, password) VALUES (%s, %s, %s);", 
-        (email, username, password))
-    conn.commit()
-    conn.close()
+    if conn is not None:
+        with conn:
+            with conn.cursor() as cursor:
+                try:
+                    cursor.execute("INSERT INTO db_user (email, username, pass) VALUES (%s, %s, %s);", 
+                        (email, username, password))
+                    logger.debug(f"Query {cursor.query} ")
+                    content['status'] = 'registered'
+                except psycopg2.errors.UniqueViolation as e:
+                    content['erro'] = 'username already in use'
+        conn.close()
     return jsonify(content)
     
-# TODO Authenticate a user
 @app.route('/dbproj/user', methods=['PUT'])
 def auth():
     logger.info("PUT /dbproj/user")
@@ -52,7 +58,30 @@ def auth():
         content['error'] = 'pedido inválido'
         return jsonify(content)
 
-    content['error'] = 'not yet implemented'
+    conn = dbConn()
+    if conn is not None:
+        username = payload['username']
+        password = payload['password'].encode()
+        password = hashlib.sha256(password).digest()
+        logger.debug(f"Hash = {password}")
+        sql = "SELECT pass FROM db_user WHERE username=%s"
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute(sql, (username,))
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                if cursor.rowcount == 1:
+                    row = cursor.fetchone()
+                    hash = bytes(row[0])
+                    logger.debug(f"Stored Hash: {hash}")
+                    if password == hash:
+                        logger.debug("Authenticated")
+                        content['authenticated'] = 'true'
+                    else:
+                        logger.debug("Authentication failed")
+                        content['authenticated'] = 'false'
+                else: content['erro'] = 'user does not exist'
+        conn.close()
+    else: content['erro'] = 'Connection to db failed'
     content['payload'] = dict()
     for key in required:
         content['payload'].update({key: payload[key]})
@@ -94,6 +123,7 @@ def newAuction():
             with conn.cursor() as cursor:
                 try:
                     cursor.execute(sql, ())
+                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 except psycopg2.DataError:
                     content['error'] = 'DB Exception: DataError'
         conn.close()
@@ -117,6 +147,7 @@ def getAuction(leilaoId):
         with conn:
             with conn.cursor() as cursor:
                 cursor.execute(auctionSQL, (leilaoId,))
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 if cursor.rowcount > 0:
                     row = cursor.fetchone()
                     logger.debug(f"{row}")
@@ -126,6 +157,7 @@ def getAuction(leilaoId):
                     content['ends'] = row[3]
                     content['seller'] = row[4]
                     cursor.execute(historySQL, (leilaoId,))
+                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                     if cursor.rowcount > 0:
                         content['history'] = []
                         for row in cursor:
@@ -136,6 +168,7 @@ def getAuction(leilaoId):
                                 'bid': row[2]
                             })
                     cursor.execute(messageSQL, (leilaoId,))
+                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                     if cursor.rowcount > 0:
                         content['messages'] = []
                         for row in cursor:
@@ -158,10 +191,11 @@ def listAuctions():
     content = {'operation': 'list all open auctions'}
     conn = dbConn()
     if conn is not None:
-        sql = "SELECT auction.itemid, auction.description FROM auction;"
+        sql = "SELECT auction.itemid, auction.description FROM auction"
         with conn:
             with conn.cursor() as cursor:
                 cursor.execute(sql)
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 content['result'] = []
                 if cursor.rowcount > 0:
                     for row in cursor:
@@ -184,7 +218,9 @@ def searchAuctions(keyword):
                     OR auction.description like '%%%(keyword)s%%'"""
             with conn.cursor() as cursor:
                 cursor.execute(sql, {'keyword': keyword})
-                pass
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                if cursor.rowcount > 0:
+                    pass
         conn.close
     else: content['erro'] = 'Connection to db failed'
     return jsonify(content)
@@ -199,6 +235,7 @@ def bidAuction(leilaoId, licitacao):
         with conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT price FROM auction WHERE itemid = %s;", (leilaoId,))
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 if cursor.rowcount == 1:
                     currentPrice = cursor.fetchone()[0]
                     if licitacao <= currentPrice:
@@ -225,7 +262,6 @@ def changeAuction(leilaoId):
 def banger1():
     return render_template("gift.html")
 
-
 # Connect to db
 def dbConn():
     try:
@@ -235,21 +271,11 @@ def dbConn():
         connection = None
     return connection
 
-"""
 def getKey():
-    with open("secret/fernet", "rb") as f:
+    with open("secret/secret.key", "rb") as f:
         key = f.read()
         f.close()
     return key
-
-def encrypt(data):
-    f = Fernet(getKey())
-    return f.encrypt(data)
-
-def decrypt(data):
-    f = Fernet(getKey())
-    return f.decrypt(data)
-"""
 
 ##########################
 #          Main          #
