@@ -4,9 +4,10 @@ DROP TABLE IF EXISTS bid;
 DROP TABLE IF EXISTS mural;
 DROP TABLE IF EXISTS auction;
 DROP TABLE IF EXISTS db_user;
+
 CREATE TABLE db_user (
 	user_id	 INTEGER,
-	username VARCHAR(128) NOT NULL,
+	username VARCHAR(128) UNIQUE NOT NULL,
 	email	 VARCHAR(128) NOT NULL,
 	pass	 BYTEA NOT NULL,
 	valid	 BOOL NOT NULL DEFAULT true,
@@ -22,32 +23,33 @@ CREATE TABLE auction (
 	description		VARCHAR(512),
 	ends			TIMESTAMP NOT NULL,
 	seller	    	INTEGER NOT NULL,
-	last_bidder		INTEGER NOT NULL,
+	last_bidder		INTEGER,
 	ongoing			BOOL NOT NULL DEFAULT TRUE,
 	cancelled		BOOL NOT NULL DEFAULT false,
 	PRIMARY KEY(item_id)
 );
 
 CREATE TABLE bid (
+	item_id			VARCHAR(512),
+	b_id			INTEGER,
 	bidder 			INTEGER,
 	b_date		    TIMESTAMP,
-	item_id			VARCHAR(512),
 	price		    NUMERIC(8,2) NOT NULL,
 	valid		    BOOL NOT NULL DEFAULT false,
-	PRIMARY KEY(b_date,item_id,bidder)
+	PRIMARY KEY(item_id,bidder,b_id)
 );
 
 CREATE TABLE mural (
-	user_id 	INTEGER,
 	item_id	    VARCHAR(512),
-	m_id		INTEGER,
+	user_id 	INTEGER,
+	m_id      	INTEGER,
 	m_date		TIMESTAMP NOT NULL,
 	msg			VARCHAR(128) NOT NULL,
-	PRIMARY KEY(user_id,item_id,m_id)
+	PRIMARY KEY(item_id,user_id,m_id)
 );
 
 CREATE TABLE history (
-	item_id 	VARCHAR(512),
+	item_id 		VARCHAR(512),
 	hist_id	    	INTEGER,
 	hist_date		TIMESTAMP NOT NULL,
 	title	    	VARCHAR(128),

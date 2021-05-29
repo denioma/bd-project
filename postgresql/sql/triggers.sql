@@ -22,16 +22,21 @@ AS $$
 DECLARE
     current_price auction.price%TYPE;
     ends auction.ends%TYPE;
+    cancelled auction.cancelled%TYPE;
 BEGIN
-    SELECT auction.price, auction.ends FROM auction 
-    WHERE item_id = NEW.itemid INTO current_price ends;
-    
-    IF (ends >= CURRENT_TIMESTAMP OR cancelled = false) AND NEW.price > current_price
-    THEN
-        RETURN NEW;
+    SELECT auction.price, auction.ends, auction.cancelled FROM auction 
+    WHERE item_id = NEW.item_id INTO current_price, ends, cancelled;
+
+    IF ends < CURRENT_TIMESTAMP THEN
+        RAISE EXCEPTION 'Auction is closed';
+    ELSIF cancelled = true  THEN
+        RAISE EXCEPTION 'Auction is cancelled';
+    ELSIF current_price >= NEW.price THEN
+        RAISE EXCEPTION 'Bid is not higher than current price';
     ELSE
-        RETURN OLD;
+        RETURN NEW;
     END IF;
+    RETURN OLD;
 END;
 $$;
 
@@ -47,11 +52,12 @@ DECLARE
     id history.hist_id%TYPE;
 BEGIN
     SELECT COUNT(*) + 1 FROM history 
-    WHERE history.hist_id = OLD.item_id
+    WHERE history.item_id = OLD.item_id
     INTO id;
 
     INSERT INTO history (item_id, hist_id, hist_date, title, description) 
     VALUES (OLD.item_id, id, CURRENT_TIMESTAMP, OLD.title, OLD.description);
+    RETURN NEW;
 END;
 $$; 
 

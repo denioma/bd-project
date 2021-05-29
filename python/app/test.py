@@ -1,3 +1,12 @@
+# Databases - 2020/2021
+# Final Project - REST API
+
+# Authors:
+#   David Valente Pereira Barros Leitão - 
+#   João António Correia Vaz - 
+#   Rodrigo Alexandre da Mota Machado - 2019218299
+
+# IDEA Consider switching authToken from Request body to headers
 from datetime import datetime
 from flask import Flask, json, jsonify, request, render_template
 import hashlib
@@ -14,41 +23,41 @@ def landing():
 @app.route("/dbproj/user", methods=['POST'])
 def register():
     logger.info("POST /dbproj/users")
-    content = {'operation': 'register a user'}
     payload = request.get_json()
-    
-    # Check for required request body fields
     required = {'username', 'password', 'email'}    
-    if set(payload.keys()).intersection(required) != required:
-        content['error'] = 'pedido inválido'
-        return jsonify(content)
+    fields = set(payload.keys())
+    diff = list(required.difference(fields))
+    if len(diff) > 0:
+        return jsonify({'Error': f'Missing fields {diff}'})
     
-    content['payload'] = dict()
-    for key in required:
-        content['payload'].update({key: payload[key]})
     username = payload['username']
     email = payload['email']
     password = payload['password']
     password = password.encode()
     # TODO Change password hashing to a more secure scheme
     password = hashlib.sha256(password).digest()
-    logger.debug(f"Hash = {password}")
+    content = dict()
+    
     conn = dbConn()
-    if conn is not None:
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) FROM db_user;")
-                logger.debug(cursor.query)
-                user_id = cursor.fetchone()[0] + 1
-                logger.debug(f"User ID {user_id}")
-                try:
-                    cursor.execute("INSERT INTO db_user (email, username, pass, user_id) VALUES (%s, %s, %s, %s);", 
-                        (email, username, password, user_id))
-                    logger.debug(f"Query {cursor.query} ")
-                    content['status'] = 'registered'
-                except psycopg2.errors.UniqueViolation:
-                    content['erro'] = 'username already in use'
-        conn.close()
+    if conn is None:
+        pass
+
+    statement = """INSERT INTO db_user (email, username, pass, user_id) 
+                VALUES (%s, %s, %s, %s);"""
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM db_user;")
+            logger.debug(cursor.query)
+            user_id = cursor.fetchone()[0] + 1
+            logger.debug(f"User ID {user_id}")
+            try:
+                cursor.execute(statement, (email, username, password, user_id))
+                logger.debug(f"Query {cursor.query} ")
+                content['Status'] = 'Registered'
+            except psycopg2.errors.UniqueViolation:
+                content['Error'] = 'Username already in use'
+    conn.close()
+
     return jsonify(content)
     
 # Authenticate a user
@@ -57,7 +66,6 @@ def auth():
     logger.info("PUT /dbproj/user")
     payload = request.get_json()
     fields = set(payload.keys())
-    content = dict()
     
     # Check for required request body fields
     required = {'username', 'password'}
@@ -66,35 +74,43 @@ def auth():
         return jsonify({'Error': f'Missing fields {diff}'})
 
     conn = dbConn()
-    if conn is not None:
-        username = payload['username']
-        password = payload['password'].encode()
-        password = hashlib.sha256(password).digest()
-        sql = "SELECT user_id, pass FROM db_user WHERE username=%s"
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql, (username,))
-                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                if cursor.rowcount == 1:
-                    row = cursor.fetchone()
-                    userId = row[0]
-                    hash = bytes(row[1])
-                    if password == hash:
-                        logger.debug("Authenticated")
-                        content['authToken'] = getToken(username, userId)
-                    else:
-                        logger.debug("Authentication failed")
-                        content['Error'] = 'Wrong password'
-                else: content['Error'] = 'User does not exist'
-        conn.close()
-    else: content['Error'] = 'Connection to db failed'
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    content = dict()
+    username = payload['username']
+    password = payload['password'].encode()
+    password = hashlib.sha256(password).digest()
+    statement = "SELECT user_id, pass FROM db_user WHERE username=%s"
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(statement, (username,))
+            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+            if cursor.rowcount == 1:
+                row = cursor.fetchone()
+                userId = row[0]
+                hash = bytes(row[1])
+                if password == hash:
+                    logger.debug("Authenticated")
+                    content['authToken'] = getToken(username, userId)
+                else:
+                    logger.debug("Authentication failed")
+                    content['Error'] = 'Wrong password'
+            else: content['Error'] = 'User does not exist'
+    conn.close()
+    
     return jsonify(content)
 
 # Create a new auction
 @app.route('/dbproj/leilao', methods=['POST'])
 def newAuction():
     logger.info("POST /dbproj/leilao")
-    required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends', 'authToken'}
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    if readToken(authToken) is None:
+        return jsonify({'Error': 'Invalid authToken'})
+    required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends'}
     payload = request.get_json()
     if payload is None:
         return jsonify({'Error': f'Missing fields {required}'})
@@ -107,44 +123,53 @@ def newAuction():
     conn = dbConn()
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
-    token = readToken(payload['authToken'])
+
     date = payload['ends']
     date = date[:date.find(" (")]
     date = datetime.strptime(date, "%a %b %d %Y %H:%M:%S %Z%z")
-    sql = """INSERT INTO auction (seller, item_id, min_price, price, title, description, ends) VALUES 
-      (%(seller)s, %(artigoId)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)"""
-    args = {'seller': token['userId']}
+    authToken = readToken(authToken)
+
+    statement = """INSERT INTO auction (seller, item_id, min_price, price, title, description, ends)
+                VALUES (%(seller)s, %(artigoId)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, 
+                %(descricao)s, %(ends)s)"""
+    
+    args = {'seller': authToken['userId']}
     for key in required:
         if key != 'ends':
             args.update({key: payload[key]})
     args.update({'ends': date})
     logger.debug(args)
+    
     with conn:
         with conn.cursor() as cursor:
             try:
-                cursor.execute(sql, args)
+                cursor.execute(statement, args)
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 content['Status'] = 'Success'
             except psycopg2.DataError as e:
                 content['Error'] = 'DB Exception'
                 logger.error(e.pgerror)
     conn.close()
+
     return jsonify(content)
 
-# TODO Test Bid History and Mural
+# TODO Test Mural
 @app.route('/dbproj/leilao/<leilaoId>', methods=['GET'])
 def getAuction(leilaoId):
     logger.info(f"GET /dbproj/leilao/{leilaoId}")
-    payload = request.get_json()
-    content = dict()
-    if payload is None or 'authToken' not in payload.keys():
+    authToken = request.headers.get('authToken')
+    if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
+    if readToken(authToken) is None:
+        return jsonify({'Error': 'Invalid authToken'})
     
     conn = dbConn()
     if conn is None:
-        return jsonify({'erro': 'Connection to db failed'})
+        return jsonify({'Error': 'Connection to db failed'})
 
-    auctionSQL = """SELECT price, title, description, ends, username 
+    content = dict()
+    auctionSQL = """SELECT price, title, description, ends, username, 
+                    min_price 
                     FROM auction INNER JOIN db_user 
                     ON auction.seller = db_user.user_id
                     WHERE item_id = %s;"""
@@ -171,6 +196,7 @@ def getAuction(leilaoId):
                 content['Description'] = row[2]
                 content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
                 content['Seller'] = row[4]
+                content['Starting Price'] = str(row[5])
                 cursor.execute(historySQL, (leilaoId,))
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 if cursor.rowcount == 0:
@@ -193,8 +219,9 @@ def getAuction(leilaoId):
                     for row in cursor:
                         logger.debug(f"{row}")
                         content['Mural'].append({
-                            'Message': row[1],
-                            'Timestamp': row[0].strftime("%d-%m-%Y %H:%M:%S")
+                            'User': row[0],
+                            'Date': row[1].strftime("%d-%m-%Y %H:%M:%S"),
+                            'Message': row[2]
                         })
     conn.close()
 
@@ -204,6 +231,12 @@ def getAuction(leilaoId):
 @app.route('/dbproj/leiloes', methods=['GET'])
 def listAuctions():
     logger.info("GET /dbproj/leiloes")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    if readToken(authToken) is None:
+        return jsonify({'Error': 'Invalid authToken'})
+    
     conn = dbConn()
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
@@ -230,25 +263,30 @@ def listAuctions():
 @app.route('/dbproj/leiloes/<keyword>', methods=['GET'])
 def searchAuctions(keyword):
     logger.info(f"GET /dbproj/leiloes/{keyword}")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    if readToken(authToken) is None:
+        return jsonify({'Error': 'Invalid authToken'})
+    
     content = {'Operation': 'Search for open auction', 'Keyword': keyword}
     conn = dbConn()
 
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
     
-    # TODO decide wether itemId is a Integer or Varchar
-    sql = """SELECT auction.item_id, auction.description
-            FROM auction WHERE auction.item_id = %(keyword)s 
-            OR auction.description LIKE %(regex)s"""
+    statement = """SELECT auction.item_id, auction.description
+                FROM auction WHERE auction.item_id = %(keyword)s 
+                OR auction.description LIKE %(regex)s"""
 
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(sql, {'keyword': keyword, 'regex': f'%{keyword}%'})
+            cursor.execute(statement, {'keyword': keyword, 'regex': f'%{keyword}%'})
             logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
             if cursor.rowcount > 0: 
                 content = []
                 for row in cursor:
-                    content.append({'auctionId': row[0], 'description': row[1]})
+                    content.append({'itemId': row[0], 'description': row[1]})
             else: 
                 content = {'Error': 'No results found'}
     conn.close()
@@ -259,74 +297,101 @@ def searchAuctions(keyword):
 @app.route('/dbproj/licitar/leilao/<leilaoId>/<licitacao>', methods=['GET'])
 def bidAuction(leilaoId, licitacao):
     logger.info(f"GET /dbproj/licitar/leilao/{leilaoId}/{licitacao}")
-    required = {'jwt'}
-    payload = request.get_json()
-    fields = set(payload.keys())
-    diff = list(required.difference(fields))
-    if len(diff) > 0:
-        return jsonify({'erro': 'missing auth token'})
-    content = {'operation': 'bid on open auction', 'leilaoId': leilaoId, 'licitacao': licitacao}
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    token = readToken(authToken)
+    if authToken is None:
+        return jsonify({'Error': 'Invalid authToken'})
+    
     conn = dbConn()
-    if conn is not None:
-        username = readToken(payload['jwt'])['username']
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT price FROM auction WHERE itemid = %s;", (leilaoId,))
-                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                if cursor.rowcount == 1:
-                    currentPrice = cursor.fetchone()[0]
-                    if licitacao <= currentPrice:
-                        content['erro'] = 'Bid is lower than current price'
-                    else:
-                        statement = """INSERT INTO bid (itemid, b_date, price, bidder) 
-                        VALUES (
-                            %(itemid)s, 
-                            current_timestamp, 
-                            %(price)s,
-                            %(bidder)s)
-                        """
-                        try:
-                            cursor.execute(statement, (leilaoId, licitacao, username))
-                            content['status'] = 'Sucess'
-                        except psycopg2.Error as e:
-                            logger.debug(e.diag.message_primary)
-                else: content['erro'] = 'Auction not found'
-        conn.close()
-    else: content['erro'] = 'Connection to db failed'
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    userId = token.get('userId')
+    statement = """INSERT INTO bid (item_id, b_id, b_date, price, bidder) 
+                VALUES (%(itemId)s, %(bidId)s, current_timestamp, %(price)s, %(bidder)s)"""
+    content = dict()
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*)+1 FROM bid WHERE bidder = %s", (userId,))
+            bidId = cursor.fetchone()[0]
+            args = {'itemId': leilaoId, 'price': licitacao, 'bidder': userId, 'bidId': bidId}
+            try:
+                cursor.execute(statement, args)
+                content['Status'] = 'Success'
+            except psycopg2.Error as e:
+                logger.debug(e.diag.message_primary)
+                content['Error'] = e.diag.message_primary
+    conn.close()
+    
     return jsonify(content)
 
-# Change an auctions details
+# TODO Change an auction's details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['PUT'])
 def changeAuction(leilaoId):
     logger.info(f"PUT /dbproj/leilao/{leilaoId}")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    token = readToken(authToken)
+    if token is None:
+        return jsonify({'Error': 'Invalid authToken'})
+        
     payload = request.get_json()
-    content = {'operation': 'change auction details', 'leilaoId': leilaoId, 
-        'erro': 'not yet implemented', 'payload': payload}
-    return jsonify(content)
+    fields = set(payload.keys())
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+    
+    with conn:
+        with conn.cursor() as cursor:
+            pass
+    conn.close()
+    
+    return jsonify({'Error': 'Not yet implemented'})
 
 # Post a message
 @app.route('/dbproj/message/<leilaoId>', methods=['POST'])
 def postMessage(leilaoId):
     logger.info(f"POST /dbproj/message/{leilaoId}")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    token = readToken(authToken)
+    if token is None:
+        return jsonify({'Error': 'Invalid authToken'})
+
     payload = request.get_json()
-    required = {'jwt', 'message'}
+    required = {'message'}
     fields = set(payload.keys())
     diff = list(required.difference(fields))
     if len(diff) > 0:
-        return jsonify({'erro': f'missing body fields: {diff}'})
-    jwt = payload['jwt']
+        return jsonify({'Error': f'Missing body fields: {diff}'})
     msg = payload['message']
-    token = readToken(jwt)
+    
     conn = dbConn()
-    if conn is not None:
-        return jsonify({'erro': 'not yet implemented'})
-        """
-        with conn:
-            with conn.cursor() as cursor:
-                pass
-            conn.close()
-        """
-    else: return jsonify({'erro': 'connection to db failed'})
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+    
+    content = dict()
+    with conn:
+        userId = token.get('userId')
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*)+1 FROM mural WHERE user_id = %s", (userId,))
+            msgId = cursor.fetchone()[0]
+
+            statement = """INSERT INTO mural (m_id, item_id, user_id, m_date, msg)
+                        VALUES (%(msgId)s, %(itemId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
+            args = {'msgId': msgId, 'itemId': leilaoId, 'userId': userId, 'message': msg}
+            
+            cursor.execute(statement, args)
+            content['Status'] = 'Success'
+    
+    conn.close()
+
+    return jsonify(content)
     
 
 # Not so hidden easter egg
@@ -364,21 +429,6 @@ def readToken(token):
         logger.debug(f"Invalid token signature")
         decoded = None
     return decoded
-
-def getUserId(username):
-    conn = dbConn()
-    if conn is None:
-        return None
-    with conn:
-        with conn.cursor() as cursor:
-            try:
-                cursor.execute("SELECT user_id FROM db_user WHERE username = %s", (username,))
-            except psycopg2.Error as e:
-                logger.debug(e.diag.primary_message)
-                return None
-            userId = cursor.fetchone()[0]
-    conn.close()
-    return userId
 
 ##########################
 #          Main          #
