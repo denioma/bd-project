@@ -1268,3 +1268,609 @@ INFO:werkzeug: * Running on http://172.20.0.3:5000/ (Press CTRL+C to quit)
 INFO:werkzeug: * Restarting with stat
 WARNING:werkzeug: * Debugger is active!
 INFO:werkzeug: * Debugger PIN: 102-132-410
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.20.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 102-132-410
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.21.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 208-411-593
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.22.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 182-522-051
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.23.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 112-792-606
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.24.0.2:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 103-502-010
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.25.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 304-847-945
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.26.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 942-936-220
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.27.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 114-458-400
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.27.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 114-458-400
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.28.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 272-843-819
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.29.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 339-657-043
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.30.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:POST /dbproj/users
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:b'SELECT COUNT(*) FROM db_user;'
+DEBUG:logger:User ID 1
+DEBUG:logger:Query b"INSERT INTO db_user (email, username, pass, user_id) VALUES ('shitface@gmail.com', 'shitface', '\\x024da76781feb88c823835638a07ecdbb5ac35c08103b41ded4da19efd72ffa4'::bytea, 1);" 
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:09:43] "POST /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authenticated
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:18:08] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'[h\xc0d\xb8%\x8d#\xdapl\x8e\x16\xd1G\x94H\x06g\x92\xfa\xff\xf5\xd6Z"\xa7\xbf\xe4 VT'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authentication failed
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:18:22] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authenticated
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:18:27] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authenticated
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:19:25] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authenticated
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:19:35] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authenticated
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:19:58] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b's\x84\xdav\\l\xee\x965\xa6R\xbb\xed\xb5B]\xcb\xe1&\xc2{B\x08\xd4\x83\xa7\xc0A>},\x1e'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authentication failed
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:20:08] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b's\x84\xdav\\l\xee\x965\xa6R\xbb\xed\xb5B]\xcb\xe1&\xc2{B\x08\xd4\x83\xa7\xc0A>},\x1e'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authentication failed
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:20:37] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='umamerdaqualquer'" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:20:49] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Hash = b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Query b"SELECT user_id, pass FROM db_user WHERE username='shitface'" returned 1 rows
+DEBUG:logger:Stored Hash: b'\x02M\xa7g\x81\xfe\xb8\x8c\x8285c\x8a\x07\xec\xdb\xb5\xac5\xc0\x81\x03\xb4\x1d\xedM\xa1\x9e\xfdr\xff\xa4'
+DEBUG:logger:Authenticated
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:20:58] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:POST /dbproj/leilao
+DEBUG:logger:Decoding token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InNoaXRmYWNlIn0._anYlZ13J8iumwCzh676Z_0niOtL3pE1S9eawRP617M
+DEBUG:logger:Valid token
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:30:38] "[35m[1mPOST /dbproj/leilao HTTP/1.1[0m" 500 -
+INFO:logger:POST /dbproj/leilao
+DEBUG:logger:Decoding token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A
+DEBUG:logger:Valid token
+DEBUG:logger:{'seller': 1, 'descricao': 'If we compress the sensor, we can get to the XSS hard drive through the solid state USB application!', 'precoMinimo': '616.05', 'titulo': 'Fish', 'authToken': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A', 'artigoId': '350', 'ends': datetime.datetime(2021, 9, 9, 9, 35, 18, tzinfo=datetime.timezone(datetime.timedelta(seconds=3600), 'GMT'))}
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:32:50] "[35m[1mPOST /dbproj/leilao HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:POST /dbproj/leilao
+DEBUG:logger:Decoding token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A
+DEBUG:logger:Valid token
+DEBUG:logger:{'seller': 1, 'artigoId': '422', 'descricao': "You can't generate the application without overriding the back-end AGP monitor!", 'precoMinimo': '838.86', 'titulo': 'Salad', 'authToken': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A', 'ends': datetime.datetime(2021, 9, 2, 19, 45, 49, tzinfo=datetime.timezone(datetime.timedelta(seconds=3600), 'GMT'))}
+DEBUG:logger:Query b"INSERT INTO auction (seller, item_id, min_price, price, title, description, ends) VALUES \n      (1, '422', '838.86', '838.86', 'Salad', 'You can''t generate the application without overriding the back-end AGP monitor!', '2021-09-02T19:45:49+01:00'::timestamptz)" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:33:12] "POST /dbproj/leilao HTTP/1.1" 200 -
+INFO:logger:POST /dbproj/leilao
+DEBUG:logger:Decoding token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A
+DEBUG:logger:Valid token
+DEBUG:logger:{'seller': 1, 'artigoId': '482', 'descricao': 'web HDD', 'precoMinimo': '251.37', 'titulo': 'Cheese', 'authToken': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A', 'ends': datetime.datetime(2021, 10, 13, 2, 42, 51, tzinfo=datetime.timezone(datetime.timedelta(seconds=3600), 'GMT'))}
+DEBUG:logger:Query b"INSERT INTO auction (seller, item_id, min_price, price, title, description, ends) VALUES \n      (1, '482', '251.37', '251.37', 'Cheese', 'web HDD', '2021-10-13T02:42:51+01:00'::timestamptz)" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:35:08] "POST /dbproj/leilao HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:POST /dbproj/leilao
+DEBUG:logger:Decoding token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A
+DEBUG:logger:Valid token
+DEBUG:logger:{'seller': 1, 'artigoId': '181', 'precoMinimo': '588.08', 'titulo': 'Gloves', 'authToken': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A', 'descricao': 'payment Soap RSS Supervisor Ecuador', 'ends': datetime.datetime(2022, 4, 12, 17, 21, 9, tzinfo=datetime.timezone(datetime.timedelta(seconds=3600), 'GMT'))}
+DEBUG:logger:Query b"INSERT INTO auction (seller, item_id, min_price, price, title, description, ends) VALUES \n      (1, '181', '588.08', '588.08', 'Gloves', 'payment Soap RSS Supervisor Ecuador', '2022-04-12T17:21:09+01:00'::timestamptz)" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:37:56] "POST /dbproj/leilao HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:POST /dbproj/leilao
+DEBUG:logger:Decoding token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A
+DEBUG:logger:Valid token
+DEBUG:logger:{'seller': 1, 'authToken': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoic2hpdGZhY2UifQ.y_fRfxOPp8yUL2ITgeRqMF5UyJ5g0nd9Qsxq3s6ip6A', 'titulo': 'Fish', 'precoMinimo': '264.25', 'artigoId': '628', 'descricao': 'Rapids South Music viral bricks-and-clicks', 'ends': datetime.datetime(2022, 4, 25, 13, 15, 17, tzinfo=datetime.timezone(datetime.timedelta(seconds=3600), 'GMT'))}
+DEBUG:logger:Query b"INSERT INTO auction (seller, item_id, min_price, price, title, description, ends) VALUES \n      (1, '628', '264.25', '264.25', 'Fish', 'Rapids South Music viral bricks-and-clicks', '2022-04-25T13:15:17+01:00'::timestamptz)" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:40:56] "POST /dbproj/leilao HTTP/1.1" 200 -
+INFO:logger:GET /dbproj/leilao/628
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:41:26] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:logger:GET /dbproj/leilao/628
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:42:14] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:logger:GET /dbproj/leilao/628
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:43:06] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:43:34] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:43:51] "GET /dbproj/leilao/628 HTTP/1.1" 200 -
+INFO:logger:GET /dbproj/leilao/628
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:44:18] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, seller \n                        FROM auction WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 1)
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:48:56] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, seller \n                        FROM auction WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 1)
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:49:13] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, seller \n                        FROM auction WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 1)
+DEBUG:logger:Query b"SELECT bidder, b_date, price \n                        FROM bid WHERE item_id = '628' ORDER BY b_date;" returned 0 rows
+DEBUG:logger:Query b"SELECT * FROM mural WHERE item_id = '628' ORDER BY m_date;" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:49:25] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, seller \n                        FROM auction WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 1)
+DEBUG:logger:Query b"SELECT bidder, b_date, price \n                        FROM bid WHERE item_id = '628' ORDER BY b_date;" returned 0 rows
+DEBUG:logger:Query b"SELECT * FROM mural WHERE item_id = '628' ORDER BY m_date;" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:52:19] "GET /dbproj/leilao/628 HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, seller \n                    FROM auction WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 1)
+DEBUG:logger:Query b"SELECT bidder, b_date, price \n                    FROM bid WHERE item_id = '628' ORDER BY b_date;" returned 0 rows
+DEBUG:logger:Query b"SELECT * FROM mural WHERE item_id = '628' ORDER BY m_date;" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [28/May/2021 23:55:54] "GET /dbproj/leilao/628 HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, username \n                    FROM auction INNER JOIN db_user \n                    ON auction.seller = db_user.user_id\n                    WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 'shitface')
+DEBUG:logger:Query b"SELECT bidder, b_date, price \n                    FROM bid WHERE item_id = '628' ORDER BY b_date;" returned 0 rows
+DEBUG:logger:Query b"SELECT * FROM mural WHERE item_id = '628' ORDER BY m_date;" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:02:19] "[35m[1mGET /dbproj/leilao/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, username \n                    FROM auction INNER JOIN db_user \n                    ON auction.seller = db_user.user_id\n                    WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 'shitface')
+DEBUG:logger:Query b"SELECT username, b_date, price \n                    FROM bid INNER JOIN db_user\n                    ON bid.bidder = db_user.user_id                  \n                    WHERE item_id = '628' ORDER BY b_date;" returned 0 rows
+DEBUG:logger:Query b"SELECT username, m_date, msg \n                    FROM mural JOIN db_user\n                    ON mural.user_id = db_user.user_id\n                    WHERE item_id = '628' ORDER BY m_date;" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:08:29] "GET /dbproj/leilao/628 HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leilao/628
+DEBUG:logger:Query b"SELECT price, title, description, ends, username \n                    FROM auction INNER JOIN db_user \n                    ON auction.seller = db_user.user_id\n                    WHERE item_id = '628';" returned 1 rows
+DEBUG:logger:(Decimal('264.25'), 'Fish', 'Rapids South Music viral bricks-and-clicks', datetime.datetime(2022, 4, 25, 12, 15, 17), 'shitface')
+DEBUG:logger:Query b"SELECT username, b_date, price \n                    FROM bid INNER JOIN db_user\n                    ON bid.bidder = db_user.user_id                  \n                    WHERE item_id = '628' ORDER BY b_date;" returned 0 rows
+DEBUG:logger:Query b"SELECT username, m_date, msg \n                    FROM mural JOIN db_user\n                    ON mural.user_id = db_user.user_id\n                    WHERE item_id = '628' ORDER BY m_date;" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:12:12] "GET /dbproj/leilao/628 HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leiloes
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:18:37] "[35m[1mGET /dbproj/leiloes HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leiloes
+DEBUG:logger:Query b'SELECT item_id, description FROM auction' returned 1 rows
+DEBUG:logger:('628', 'Rapids South Music viral bricks-and-clicks')
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:19:49] "GET /dbproj/leiloes HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leiloes
+DEBUG:logger:Query b'SELECT item_id, description FROM auction \n                    WHERE ends >= CURRENT_TIMESTAMP' returned 1 rows
+DEBUG:logger:('628', 'Rapids South Music viral bricks-and-clicks')
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:20:51] "GET /dbproj/leiloes HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+INFO:werkzeug: * Running on http://172.30.0.3:5000/ (Press CTRL+C to quit)
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leiloes/628
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:35:30] "[35m[1mGET /dbproj/leiloes/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leiloes/628
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:35:42] "[35m[1mGET /dbproj/leiloes/628 HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/app/test.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 229-763-506
+INFO:logger:GET /dbproj/leiloes/628
+DEBUG:logger:Query b"SELECT auction.item_id, auction.description\n            FROM auction WHERE auction.item_id = '628' \n            OR auction.description LIKE '%628%'" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:35:52] "GET /dbproj/leiloes/628 HTTP/1.1" 200 -
+INFO:logger:GET /dbproj/leiloes/viral
+DEBUG:logger:Query b"SELECT auction.item_id, auction.description\n            FROM auction WHERE auction.item_id = 'viral' \n            OR auction.description LIKE '%viral%'" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:35:58] "GET /dbproj/leiloes/viral HTTP/1.1" 200 -
+INFO:logger:GET /dbproj/leiloes/tuna
+DEBUG:logger:Query b"SELECT auction.item_id, auction.description\n            FROM auction WHERE auction.item_id = 'tuna' \n            OR auction.description LIKE '%tuna%'" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:36:05] "GET /dbproj/leiloes/tuna HTTP/1.1" 200 -
+INFO:logger:GET /dbproj/leiloes/south
+DEBUG:logger:Query b"SELECT auction.item_id, auction.description\n            FROM auction WHERE auction.item_id = 'south' \n            OR auction.description LIKE '%south%'" returned 0 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:36:09] "GET /dbproj/leiloes/south HTTP/1.1" 200 -
+INFO:logger:GET /dbproj/leiloes/South
+DEBUG:logger:Query b"SELECT auction.item_id, auction.description\n            FROM auction WHERE auction.item_id = 'South' \n            OR auction.description LIKE '%South%'" returned 1 rows
+INFO:werkzeug:172.30.0.1 - - [29/May/2021 00:36:12] "GET /dbproj/leiloes/South HTTP/1.1" 200 -

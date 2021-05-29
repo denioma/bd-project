@@ -37,9 +37,13 @@ def register():
     if conn is not None:
         with conn:
             with conn.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM db_user;")
+                logger.debug(cursor.query)
+                user_id = cursor.fetchone()[0] + 1
+                logger.debug(f"User ID {user_id}")
                 try:
-                    cursor.execute("INSERT INTO db_user (email, username, pass) VALUES (%s, %s, %s);", 
-                        (email, username, password))
+                    cursor.execute("INSERT INTO db_user (email, username, pass, user_id) VALUES (%s, %s, %s, %s);", 
+                        (email, username, password, user_id))
                     logger.debug(f"Query {cursor.query} ")
                     content['status'] = 'registered'
                 except psycopg2.errors.UniqueViolation:
@@ -51,54 +55,50 @@ def register():
 @app.route('/dbproj/user', methods=['PUT'])
 def auth():
     logger.info("PUT /dbproj/user")
-    content = {'operation': 'authenticate a user'}
     payload = request.get_json()
+    fields = set(payload.keys())
+    content = dict()
     
     # Check for required request body fields
     required = {'username', 'password'}
-    if set(payload.keys()).intersection(required) != required:
-        content['error'] = 'pedido inválido'
-        return jsonify(content)
+    diff = list(required.difference(fields))
+    if len(diff) > 0:
+        return jsonify({'Error': f'Missing fields {diff}'})
 
     conn = dbConn()
     if conn is not None:
         username = payload['username']
         password = payload['password'].encode()
         password = hashlib.sha256(password).digest()
-        logger.debug(f"Hash = {password}")
-        sql = "SELECT pass FROM db_user WHERE username=%s"
+        sql = "SELECT user_id, pass FROM db_user WHERE username=%s"
         with conn:
             with conn.cursor() as cursor:
                 cursor.execute(sql, (username,))
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 if cursor.rowcount == 1:
                     row = cursor.fetchone()
-                    hash = bytes(row[0])
-                    logger.debug(f"Stored Hash: {hash}")
+                    userId = row[0]
+                    hash = bytes(row[1])
                     if password == hash:
                         logger.debug("Authenticated")
-                        content['authenticated'] = 'true'
-                        content['authToken'] = getToken(username)
+                        content['authToken'] = getToken(username, userId)
                     else:
                         logger.debug("Authentication failed")
-                        content['authenticated'] = 'false'
-                else: content['erro'] = 'user does not exist'
+                        content['Error'] = 'Wrong password'
+                else: content['Error'] = 'User does not exist'
         conn.close()
-    else: content['erro'] = 'Connection to db failed'
-    content['payload'] = dict()
-    for key in required:
-        content['payload'].update({key: payload[key]})
+    else: content['Error'] = 'Connection to db failed'
     return jsonify(content)
 
 # Create a new auction
 @app.route('/dbproj/leilao', methods=['POST'])
 def newAuction():
     logger.info("POST /dbproj/leilao")
-    content = {'operation': 'create a new auction'}
-    payload = request.get_json()
-    
-    # Check for required request body fields
     required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends', 'authToken'}
+    payload = request.get_json()
+    if payload is None:
+        return jsonify({'Error': f'Missing fields {required}'})
+    content = dict()
     fields = set(payload.keys())
     diff = list(required.difference(fields))
     if len(diff) > 0:
@@ -107,18 +107,13 @@ def newAuction():
     conn = dbConn()
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
-    # TODO Criar um leilão na DB
     token = readToken(payload['authToken'])
-    content['payload'] = dict()
-    for key in required:
-        if key != 'jwt': content['payload'].update({key: payload[key]})
     date = payload['ends']
     date = date[:date.find(" (")]
-    content['payload']['ends'] = date
     date = datetime.strptime(date, "%a %b %d %Y %H:%M:%S %Z%z")
-    sql = """INSERT INTO auction (seller, itemid, minprice, price, title, description, ends) VALUES 
+    sql = """INSERT INTO auction (seller, item_id, min_price, price, title, description, ends) VALUES 
       (%(seller)s, %(artigoId)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)"""
-    args = {'seller': token['username']}
+    args = {'seller': token['userId']}
     for key in required:
         if key != 'ends':
             args.update({key: payload[key]})
@@ -129,86 +124,106 @@ def newAuction():
             try:
                 cursor.execute(sql, args)
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-            except psycopg2.DataError:
-                content['error'] = 'DB Exception: DataError'
+                content['Status'] = 'Success'
+            except psycopg2.DataError as e:
+                content['Error'] = 'DB Exception'
+                logger.error(e.pgerror)
     conn.close()
     return jsonify(content)
 
-# TODO Get auction details
+# TODO Test Bid History and Mural
 @app.route('/dbproj/leilao/<leilaoId>', methods=['GET'])
 def getAuction(leilaoId):
     logger.info(f"GET /dbproj/leilao/{leilaoId}")
     payload = request.get_json()
-    if 'authToken' not in payload.keys():
+    content = dict()
+    if payload is None or 'authToken' not in payload.keys():
         return jsonify({'Error': 'Missing authToken'})
     
-    content = {'operation': 'get auction details', 'leilaoId': leilaoId}
     conn = dbConn()
-    if conn is not None:
-        auctionSQL = """SELECT price, title, description, ends, seller_db_user_username 
-                        FROM auction WHERE itemid = %s;"""
-        historySQL = """SELECT buyer_db_user_username, bid_date, price 
-                        FROM bid WHERE auction_itemid = %s ORDERED BY bid_date;"""
-        messageSQL = "SELECT * FROM comment WHERE auction_itemid = %s ORDERED BY c_date;"
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute(auctionSQL, (leilaoId,))
+    if conn is None:
+        return jsonify({'erro': 'Connection to db failed'})
+
+    auctionSQL = """SELECT price, title, description, ends, username 
+                    FROM auction INNER JOIN db_user 
+                    ON auction.seller = db_user.user_id
+                    WHERE item_id = %s;"""
+    historySQL = """SELECT username, b_date, price 
+                    FROM bid INNER JOIN db_user
+                    ON bid.bidder = db_user.user_id                  
+                    WHERE item_id = %s ORDER BY b_date;"""
+    messageSQL = """SELECT username, m_date, msg 
+                    FROM mural JOIN db_user
+                    ON mural.user_id = db_user.user_id
+                    WHERE item_id = %s ORDER BY m_date;"""
+
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(auctionSQL, (leilaoId,))
+            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+            if cursor.rowcount == 0:
+                content['Error'] = 'Auction not found'
+            else:
+                row = cursor.fetchone()
+                logger.debug(f"{row}")
+                content['Price'] = str(row[0])
+                content['Title'] = row[1]
+                content['Description'] = row[2]
+                content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
+                content['Seller'] = row[4]
+                cursor.execute(historySQL, (leilaoId,))
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                if cursor.rowcount > 0:
-                    row = cursor.fetchone()
-                    logger.debug(f"{row}")
-                    content['price'] = row[0]
-                    content['title'] = row[1]
-                    content['description'] = row[2]
-                    content['ends'] = row[3]
-                    content['seller'] = row[4]
-                    cursor.execute(historySQL, (leilaoId,))
-                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                    if cursor.rowcount > 0:
-                        content['history'] = []
-                        for row in cursor:
-                            logger.debug(f"{row}")
-                            content['history'].append({
-                                'bidder': row[0],
-                                'timestamp': row[1],
-                                'bid': row[2]
-                            })
-                    cursor.execute(messageSQL, (leilaoId,))
-                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                    if cursor.rowcount > 0:
-                        content['messages'] = []
-                        for row in cursor:
-                            # TODO change db structure to include commenter
-                            logger.debug(f"{row}")
-                            content['messages'].append({
-                                'msg': row[1],
-                                'date': row[0]
-                            })
+                if cursor.rowcount == 0:
+                    content['History'] = 'Empty'
                 else:
-                    content['erro'] = 'Auction not found'
-        conn.close()
-    else: content['erro'] = 'Connection to db failed'
+                    content['History'] = []
+                    for row in cursor:
+                        logger.debug(f"{row}")
+                        content['History'].append({
+                            'Bidder': row[0],
+                            'Timestamp': row[1].strftime("%d-%m-%Y %H:%M:%S"),
+                            'Bid': str(row[2])
+                        })
+                cursor.execute(messageSQL, (leilaoId,))
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                if cursor.rowcount == 0:
+                    content['Mural'] = 'Empty'
+                else:
+                    content['Mural'] = []
+                    for row in cursor:
+                        logger.debug(f"{row}")
+                        content['Mural'].append({
+                            'Message': row[1],
+                            'Timestamp': row[0].strftime("%d-%m-%Y %H:%M:%S")
+                        })
+    conn.close()
+
     return jsonify(content)
 
 # List all open auctions
 @app.route('/dbproj/leiloes', methods=['GET'])
 def listAuctions():
     logger.info("GET /dbproj/leiloes")
-    content = {'operation': 'list all open auctions'}
     conn = dbConn()
-    if conn is not None:
-        sql = "SELECT auction.itemid, auction.description FROM auction"
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql)
-                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                content['result'] = []
-                if cursor.rowcount > 0:
-                    for row in cursor:
-                        logger.debug(f"{row}")
-                        content['result'].append({'leilaoId': row[0], 'description': row[1]})
-                else: content['result'] = 'no results'
-        conn.close()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+    
+    statement = """SELECT item_id, description FROM auction 
+                WHERE ends >= CURRENT_TIMESTAMP"""
+
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(statement)
+            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+            if cursor.rowcount == 0:
+                content = {'Error': 'No results'}
+            else:
+                content = []
+                for row in cursor:
+                    logger.debug(f"{row}")
+                    content.append({'auctionId': row[0], 'description': row[1]})
+    conn.close()
+
     return jsonify(content)
 
 # Search on open auctions
@@ -217,25 +232,27 @@ def searchAuctions(keyword):
     logger.info(f"GET /dbproj/leiloes/{keyword}")
     content = {'Operation': 'Search for open auction', 'Keyword': keyword}
     conn = dbConn()
-    if conn is not None:
-        with conn:
-            # TODO Uncomment full query after changing itemid to VARCHAR
-            # sql = """SELECT auction.itemid, auction.description
-            #         FROM auction WHERE auction.itemid = %(keyword)s 
-            #         OR auction.description LIKE %(regex)s"""
-            sql = """SELECT auction.itemid, auction.description
-                    FROM auction WHERE auction.description like %(regex)s
-                    ORDER BY auction.itemid"""
-            with conn.cursor() as cursor:
-                cursor.execute(sql, {'keyword': keyword, 'regex': f'%{keyword}%'})
-                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                if cursor.rowcount > 0: 
-                    content['Results'] = cursor.fetchall()
-                else: 
-                    content = {'Error': 'No results found'}
-        conn.close()
-    else: 
-        content['Error'] = 'Connection to database failed'
+
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+    
+    # TODO decide wether itemId is a Integer or Varchar
+    sql = """SELECT auction.item_id, auction.description
+            FROM auction WHERE auction.item_id = %(keyword)s 
+            OR auction.description LIKE %(regex)s"""
+
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(sql, {'keyword': keyword, 'regex': f'%{keyword}%'})
+            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+            if cursor.rowcount > 0: 
+                content = []
+                for row in cursor:
+                    content.append({'auctionId': row[0], 'description': row[1]})
+            else: 
+                content = {'Error': 'No results found'}
+    conn.close()
+
     return jsonify(content)
 
 # Bid on an open auction
@@ -333,8 +350,8 @@ def getKey():
     return key
 
 # Get JWT for user
-def getToken(username):
-    payload = {'username': username}
+def getToken(username, userId):
+    payload = {'userId': userId, 'username': username}
     return jwt.encode(payload, getKey(), algorithm='HS256')
 
 # Read user token
@@ -347,6 +364,21 @@ def readToken(token):
         logger.debug(f"Invalid token signature")
         decoded = None
     return decoded
+
+def getUserId(username):
+    conn = dbConn()
+    if conn is None:
+        return None
+    with conn:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute("SELECT user_id FROM db_user WHERE username = %s", (username,))
+            except psycopg2.Error as e:
+                logger.debug(e.diag.primary_message)
+                return None
+            userId = cursor.fetchone()[0]
+    conn.close()
+    return userId
 
 ##########################
 #          Main          #
