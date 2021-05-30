@@ -44,25 +44,20 @@ DROP TRIGGER IF EXISTS bid_open ON bid;
 CREATE TRIGGER bid_open BEFORE INSERT ON bid 
     FOR EACH ROW EXECUTE FUNCTION bid_open();
 
--- This trigger updates history on a auction's title or description update
+-- This trigger updates history on a auction's title or description insert/update
 CREATE OR REPLACE FUNCTION hist_update() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    id history.hist_id%TYPE;
 BEGIN
-    SELECT COUNT(*) + 1 FROM history 
-    WHERE history.auction_id = OLD.auction_id
-    INTO id;
-
-    INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
-    VALUES (OLD.auction_id, id, CURRENT_TIMESTAMP, OLD.title, OLD.description);
+    INSERT INTO history (auction_id, hist_date, title, description) 
+    VALUES (NEW.auction_id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
     RETURN NEW;
 END;
 $$; 
 
 DROP TRIGGER IF EXISTS hist_update ON auction;
-CREATE TRIGGER hist_update BEFORE UPDATE OF title, description ON auction
+CREATE TRIGGER hist_update AFTER INSERT OR UPDATE OF title, description ON auction
     FOR EACH ROW EXECUTE FUNCTION hist_update();
 
 -- This trigger notifies the outbidded user
