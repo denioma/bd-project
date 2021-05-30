@@ -126,9 +126,11 @@ def newAuction():
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
 
+    postmanFormat = "%a %b %d %Y %H:%M:%S %Z%z"
+    regularFormat = "%d-%m-%Y %H:%M:%S"
     date = payload['ends']
     date = date[:date.find(" (")]
-    date = datetime.strptime(date, "%a %b %d %Y %H:%M:%S %Z%z")
+    date = datetime.strptime(date, postmanFormat)
     authToken = readToken(authToken)
 
     statement = """INSERT INTO auction (item_id, seller, min_price, price, title, description, ends)
