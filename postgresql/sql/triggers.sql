@@ -66,17 +66,20 @@ CREATE TRIGGER hist_update BEFORE UPDATE OF title, description ON auction
     FOR EACH ROW EXECUTE FUNCTION hist_update();
 
 -- This trigger notifies the outbidded user
-# TODO Test this
+-- TODO Test this
 CREATE OR REPLACE FUNCTION outbidded() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    old_bidder alias for old.last_bidder;
     new_bidder db_user.username%TYPE;
     id notifs.n_id%TYPE;
 BEGIN
+    IF old.last_bidder = new.last_bidder THEN
+        RETURN NEW;
+    END IF;
+    
     SELECT COUNT(*)+1 FROM notifs
-    WHERE user_id = old_bidder
+    WHERE user_id = old.last_bidder
     INTO id;
 
     SELECT username FROM db_user
@@ -84,12 +87,14 @@ BEGIN
     INTO new_bidder;
 
     INSERT INTO notifs (user_id, n_id, n_date, msg) VALUES (
-        old_bidder, id, CURRENT_TIMESTAMP, 
+        old.last_bidder, id, CURRENT_TIMESTAMP, 
         'User ' || new_bidder || ' outbid you in auction ' || new.auction_id
     );
+
+    RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS outbidded ON auction;
-CREATE TRIGGER outbidded BEFOR UPDATE OF last_bidder ON auction
+CREATE TRIGGER outbidded BEFORE UPDATE OF last_bidder ON auction
     FOR EACH ROW EXECUTE FUNCTION outbidded(); 
