@@ -5,7 +5,7 @@ AS $$
 DECLARE
 BEGIN
     UPDATE auction SET price = NEW.price, last_bidder = NEW.bidder
-    WHERE auction.item_id = NEW.item_id;
+    WHERE auction.auction_id = NEW.auction_id;
     RETURN NULL;
 END;
 $$;
@@ -25,7 +25,7 @@ DECLARE
     cancelled auction.cancelled%TYPE;
 BEGIN
     SELECT auction.price, auction.ends, auction.cancelled FROM auction 
-    WHERE item_id = NEW.item_id INTO current_price, ends, cancelled;
+    WHERE auction_id = NEW.auction_id INTO current_price, ends, cancelled;
 
     IF ends < CURRENT_TIMESTAMP THEN
         RAISE EXCEPTION 'Auction is closed';
@@ -44,7 +44,7 @@ DROP TRIGGER IF EXISTS bid_open ON bid;
 CREATE TRIGGER bid_open BEFORE INSERT ON bid 
     FOR EACH ROW EXECUTE FUNCTION bid_open();
 
--- This trigger updates history on a auction update
+-- This trigger updates history on a auction's title or description update
 CREATE OR REPLACE FUNCTION hist_update() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
@@ -52,15 +52,44 @@ DECLARE
     id history.hist_id%TYPE;
 BEGIN
     SELECT COUNT(*) + 1 FROM history 
-    WHERE history.item_id = OLD.item_id
+    WHERE history.auction_id = OLD.auction_id
     INTO id;
 
-    INSERT INTO history (item_id, hist_id, hist_date, title, description) 
-    VALUES (OLD.item_id, id, CURRENT_TIMESTAMP, OLD.title, OLD.description);
+    INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
+    VALUES (OLD.auction_id, id, CURRENT_TIMESTAMP, OLD.title, OLD.description);
     RETURN NEW;
 END;
 $$; 
 
 DROP TRIGGER IF EXISTS hist_update ON auction;
-CREATE TRIGGER hist_update BEFORE UPDATE ON auction
+CREATE TRIGGER hist_update BEFORE UPDATE OF title, description ON auction
     FOR EACH ROW EXECUTE FUNCTION hist_update();
+
+-- This trigger notifies the outbidded user
+# TODO Test this
+CREATE OR REPLACE FUNCTION outbidded() RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    old_bidder alias for old.last_bidder;
+    new_bidder db_user.username%TYPE;
+    id notifs.n_id%TYPE;
+BEGIN
+    SELECT COUNT(*)+1 FROM notifs
+    WHERE user_id = old_bidder
+    INTO id;
+
+    SELECT username FROM db_user
+    WHERE user_id = new.last_bidder
+    INTO new_bidder;
+
+    INSERT INTO notifs (user_id, n_id, n_date, msg) VALUES (
+        old_bidder, id, CURRENT_TIMESTAMP, 
+        'User ' || new_bidder || ' outbid you in auction ' || new.auction_id
+    );
+END;
+$$;
+
+DROP TRIGGER IF EXISTS outbidded ON auction;
+CREATE TRIGGER outbidded BEFOR UPDATE OF last_bidder ON auction
+    FOR EACH ROW EXECUTE FUNCTION outbidded(); 
