@@ -286,7 +286,7 @@ def searchAuctions(keyword):
         return jsonify({'Error': 'Connection to db failed'})
     
     statement = """SELECT auction.item_id, auction.description
-                FROM auction WHERE auction.item_id = %(keyword)s 
+                FROM auction WHERE auction.item_id = %(keyword)s
                 OR auction.description LIKE %(regex)s"""
 
     with conn:
@@ -340,7 +340,6 @@ def bidAuction(leilaoId, licitacao):
     
     return jsonify(content)
 
-# TODO Change an auction's details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['PUT'])
 def changeAuction(leilaoId):
     logger.info(f"PUT /dbproj/leilao/{leilaoId}")
@@ -525,7 +524,48 @@ def notifications():
                         "Date": row[0],
                         "Message": row[1]
                     })
-            cursor.execute(seen)
+            try:
+                cursor.execute(seen, token)
+            except Exception as e:
+                logger.error(str(e))
+    conn.close()
+
+    return jsonify(content)
+
+@app.route('/dbproj/admin/cancel/<auctionId>', methods=['POST'])
+def cancelAuction(auctionId):
+    logger.info(f"POST /dbproj/leiloes/{auctionId}")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    try:
+        token = validate(authToken, isAdmin=True)
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({'Error': str(e)})
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    check = "SELECT cancelled FROM auction WHERE auction_id = %s FOR UPDATE"
+    statement = "UPDATE auction SET cancelled = true WHERE auction_id = %s"
+    content = dict()
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(check, (auctionId,))
+            if cursor.rowcount == 0:
+                content['Error'] = 'Auction does not exist'
+            else:
+                if cursor.fetchone()[0] == True:
+                    content['Error'] = 'Auction already cancelled'
+                else:
+                    try:
+                        cursor.execute(statement, (auctionId,))
+                        content['Status'] = 'Success'
+                    except psycopg2.Error as e:
+                        logger.error(str(e))
+                        content['Error'] = e.diag.message_primary
     conn.close()
 
     return jsonify(content)
