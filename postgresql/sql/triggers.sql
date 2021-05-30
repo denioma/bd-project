@@ -49,9 +49,13 @@ CREATE OR REPLACE FUNCTION hist_update() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
+    id INTEGER;
 BEGIN
-    INSERT INTO history (auction_id, hist_date, title, description) 
-    VALUES (NEW.auction_id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
+    SELECT COUNT(*)+1 FROM history WHERE auction_id = NEW.auction_id
+    INTO id;
+
+    INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
+    VALUES (NEW.auction_id, id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
     RETURN NEW;
 END;
 $$; 

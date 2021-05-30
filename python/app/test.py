@@ -77,7 +77,8 @@ def authenticate():
     username = payload['username']
     password = payload['password'].encode()
     password = hashlib.sha256(password).digest()
-    statement = "SELECT user_id, pass, banned FROM db_user WHERE username=%s"
+    
+    statement = "SELECT user_id, pass, valid FROM db_user WHERE username=%s"
     with conn:
         with conn.cursor() as cursor:
             cursor.execute(statement, (username,))
@@ -86,13 +87,13 @@ def authenticate():
                 row = cursor.fetchone()
                 userId = row[0]
                 hash = bytes(row[1])
-                if row[2] == True:
+                if row[2] == False:
                     content['Error'] = 'User is banned'
                 elif password == hash:
                     logger.debug("Authenticated")
                     content['authToken'] = getToken(username, userId)
                 else:
-                    logger.debug("Authentication failed")
+                    logger.debug("Authentication failed")   
                     content['Error'] = 'Wrong password'
             else: content['Error'] = 'User does not exist'
     conn.close()
@@ -107,7 +108,7 @@ def newAuction():
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        auth(authToken)
+        validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -160,7 +161,7 @@ def getAuction(leilaoId):
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        auth(authToken)
+        validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -238,7 +239,7 @@ def listAuctions():
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        auth(authToken)
+        validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -273,7 +274,7 @@ def searchAuctions(keyword):
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        auth(authToken)
+        validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -311,7 +312,7 @@ def bidAuction(leilaoId, licitacao):
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        token = auth(authToken)
+        token = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -347,7 +348,7 @@ def changeAuction(leilaoId):
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        token = auth(authToken)
+        token = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -382,10 +383,10 @@ def changeAuction(leilaoId):
                 cursor.close()
                 return jsonify({'Error': 'Not seller'})
         with conn.cursor() as cursor:
-            if 'title' in present:
+            if ('title', 'description') in present:
+                query = commonSQL.format(fields=sql.SQL(', ').join([titleSQL, descriptionSQL]))        
+            elif 'title' in present:
                 query = commonSQL.format(fields=titleSQL)
-                if 'description' in present:
-                        query = commonSQL.format(fields=sql.SQL(', ').join([titleSQL, descriptionSQL]))        
             elif 'description' in present:
                 query = commonSQL.format(fields=descriptionSQL)
             
@@ -408,7 +409,7 @@ def postMessage(leilaoId):
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        token = auth(authToken)
+        token = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -451,7 +452,7 @@ def activity():
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:    
-        token = auth(authToken)
+        token = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -494,7 +495,7 @@ def notifications():
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        token = auth(authToken)
+        token = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -517,6 +518,60 @@ def notifications():
                     "Date": row[0],
                     "Message": row[1]
                 })
+    conn.close()
+
+    return jsonify(content)
+
+@app.route('/dbproj/admin/stats', methods=['GET'])
+def stats():
+    logger.debug("GET /dbproj/admin/stats")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        logger.error("Missing authToken")
+        return jsonify({'Error': 'Missing authToken'})
+    try:
+        token = validate(authToken, isAdmin=True)
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({'Error': str(e)})
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    topSellers = """SELECT username, COUNT(*) as total FROM auction JOIN db_user
+                    ON auction.seller = db_user.user_id
+                    GROUP BY username ORDER BY total DESC
+                    LIMIT 10"""
+    topWinners = """SELECT username, COUNT(*) as total FROM auction FULL OUTER JOIN db_user
+                    ON auction.last_bidder = db_user.user_id
+                    WHERE ends < CURRENT_TIMESTAMP AND cancelled = false
+                    GROUP BY username ORDER BY total DESC
+                    LIMIT 10"""
+    recentAuctions = """SELECT COUNT(*) as total FROM history
+                        WHERE hist_id = 1 and hist_date BETWEEN CURRENT_TIMESTAMP - INTERVAL '863990 seconds'
+                        AND CURRENT_TIMESTAMP + INTERVAL '863990 seconds'"""
+
+    content = {'Sellers': [], 'Winners': []}
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(topSellers)
+            logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
+            for row in cursor:
+                content['Sellers'].append({
+                    'User': row[0],
+                    'Auctions': row[1]
+                })
+            cursor.execute(topWinners)
+            logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
+            for row in cursor:
+                content['Winners'].append({
+                    'User': row[0],
+                    'Won': row[1]
+                })
+            cursor.execute(recentAuctions)
+            logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
+            content['New Auctions'] = cursor.fetchone()[0]
     conn.close()
 
     return jsonify(content)
@@ -552,7 +607,7 @@ def readToken(token):
     return decoded
 
 # Token may be valid, but user not registered or banned
-def auth(authToken):
+def validate(authToken, isAdmin=False):
     token = readToken(authToken)
     if token is None:
         raise Exception('Invalid token')
@@ -561,14 +616,20 @@ def auth(authToken):
     if conn is None:
         raise Exception('Connection to db failed')
 
+    commonSQL = sql.SQL("SELECT {fields} from db_user WHERE username = %s")
+    cols = [sql.Identifier('user_id'), sql.Identifier('valid')]
+    if isAdmin:
+        cols.append(sql.Identifier('admin'))
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT user_id, valid FROM db_user WHERE username = %s", (token.get('username'),))
+            cursor.execute(commonSQL.format(fields=sql.SQL(', ').join(cols)), (token.get('username'),))
             if cursor.rowcount == 1:
                 row = cursor.fetchone()
                 if row[0] == token.get('userId'):
                     if row[1] == False:
                         raise Exception('User is banned')
+                    if isAdmin and row[2] == False:
+                        raise Exception('Not Admin')
                 else:
                     raise Exception('User ID does not match')
             else:
