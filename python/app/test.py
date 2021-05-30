@@ -17,8 +17,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def landing():
-    return """Welcome to the Auction House!<br>
-            I have a splitting headache"""
+    return render_template('index.html')
 
 @app.route("/dbproj/user", methods=['POST'])
 def register():
@@ -259,7 +258,7 @@ def listAuctions():
         return jsonify({'Error': 'Connection to db failed'})
     
     statement = """SELECT auction_id, description FROM auction 
-                WHERE ends >= CURRENT_TIMESTAMP"""
+                WHERE ends >= CURRENT_TIMESTAMP AND NOT cancelled"""
 
     with conn:
         with conn.cursor() as cursor:
@@ -350,6 +349,7 @@ def bidAuction(leilaoId, licitacao):
     
     return jsonify(content)
 
+# Change auction details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['PUT'])
 def changeAuction(leilaoId):
     logger.info(f"PUT /dbproj/leilao/{leilaoId}")
@@ -439,16 +439,26 @@ def postMessage(leilaoId):
     with conn:
         userId = token.get('userId')
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*)+1 FROM mural WHERE user_id = %s", (userId,))
-            msgId = cursor.fetchone()[0]
-
-            statement = """INSERT INTO mural (m_id, item_id, user_id, m_date, msg)
-                        VALUES (%(msgId)s, %(itemId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
-            args = {'msgId': msgId, 'itemId': leilaoId, 'userId': userId, 'message': msg}
-            
-            cursor.execute(statement, args)
-            content['Status'] = 'Success'
-    
+            try:
+                cursor.execute("SELECT cancelled, ends FROM auction WHERE auction_id = %s", (leilaoId,))
+                if cursor.rowcount == 0:
+                    content['Error'] = 'Auction does not exist'
+                else:
+                    row = cursor.fetchone()
+                    if row[0] == True:
+                        content['Error'] = 'Auction has been cancelled'
+                    elif row[1] < datetime.now():
+                        content['Error'] = 'Auction has ended'
+                    else:
+                        statement = """INSERT INTO mural (auction_id, user_id, m_date, msg)
+                                    VALUES (%(auctionId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
+                        args = {'auctionId': leilaoId, 'userId': userId, 'message': msg}
+                        
+                        cursor.execute(statement, args)
+                        content['Status'] = 'Success'
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Erro'] = str(e)
     conn.close()
 
     return jsonify(content)
@@ -709,8 +719,7 @@ if __name__ == '__main__':
     ch.setLevel(logging.DEBUG)
 
     # Logger formatter
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s',
-                              '%H:%M:%S')
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s', '%H:%M:%S')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 

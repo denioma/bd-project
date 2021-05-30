@@ -126,16 +126,16 @@ BEGIN
     END IF;
 
     SELECT seller INTO STRICT auction_seller FROM auction
-    WHERE auction_id = old.auction_id;
+    WHERE auction_id = new.auction_id;
 
     CALL notify(auction_seller, notify_date,
-        'Auction ' || old.auction_id || ' has been cancelled. Sorry for any inconvenience.'
+        '[System] Auction ' || old.auction_id || ' has been cancelled. Sorry for any inconvenience.'
     );
 
     FOR row IN cur LOOP
-        IF NOT row.bidder = auction_seller THEN 
+        IF row.bidder != auction_seller THEN
             CALL notify(row.bidder, notify_date,
-                'Auction ' || old.auction_id || ' has been cancelled. Sorry for any inconvenience.'
+                '[System] Auction ' || old.auction_id || ' has been cancelled. Sorry for any inconvenience.'
             );  
         END IF;
     END LOOP;
@@ -149,8 +149,7 @@ CREATE TRIGGER cancelled AFTER UPDATE OF cancelled ON auction
     FOR EACH ROW EXECUTE FUNCTION cancelled();
 
 -- This trigger notifies users of new mural messages
--- TODO add check to not notify sender?
-CREATE OR REPLACE FUNCTION cancelled() RETURNS TRIGGER
+CREATE OR REPLACE FUNCTION mural_notify() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -167,12 +166,14 @@ BEGIN
     SELECT username INTO STRICT mural_user FROM db_user
     WHERE user_id = new.user_id;
 
-    CALL notify(auction_seller, notify_date,
-        '[Auction # ' || new.auction_id || '] ' || mural_user || ': ' || new.msg
-    );
+    IF NOT auction_seller = new.user_id THEN
+        CALL notify(auction_seller, notify_date,
+            '[Auction # ' || new.auction_id || '] ' || mural_user || ': ' || new.msg
+        );
+    END IF;
 
     FOR row IN cur LOOP
-        IF NOT row.user_id = auction_seller THEN 
+        IF NOT row.user_id = auction_seller AND NOT row.user_id = new.user_id THEN 
             CALL notify(row.user_id, notify_date,
                 '[Auction # ' || new.auction_id || '] ' || mural_user || ': ' || new.msg
             );  
@@ -182,3 +183,7 @@ BEGIN
     RETURN NULL;
 END;
 $$;
+
+DROP TRIGGER IF EXISTS  mural_notify ON mural;
+CREATE TRIGGER mural_notify AFTER INSERT ON mural
+    FOR EACH ROW EXECUTE FUNCTION mural_notify();
