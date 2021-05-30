@@ -501,23 +501,31 @@ def notifications():
         return jsonify({'Error': str(e)})
     
     logger.debug(f"userID {token.get('userId')}")
-    statement = """SELECT n_date, msg FROM notifs
+    statement = """SELECT n_date, msg, seen FROM notifs
                 WHERE user_id = %(userId)s
                 ORDER BY n_date DESC"""
+    seen = "UPDATE notifs SET seen = true WHERE user_id = %(userId)s"
 
     conn = dbConn()
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
 
-    content = []
+    content = {'Seen': [], 'Unseen': []}
     with conn:
         with conn.cursor() as cursor:
             cursor.execute(statement, token)
             for row in cursor:
-                content.append({
-                    "Date": row[0],
-                    "Message": row[1]
-                })
+                if row[2] == True:
+                    content['Seen'].append({
+                        "Date": row[0],
+                        "Message": row[1]
+                    })
+                else:
+                    content['Unseen'].append({
+                        "Date": row[0],
+                        "Message": row[1]
+                    })
+            cursor.execute(seen)
     conn.close()
 
     return jsonify(content)
