@@ -174,7 +174,7 @@ def getAuction(leilaoId):
 
     content = dict()
     auctionSQL = """SELECT price, title, description, ends, username, 
-                    min_price, auction_id
+                    min_price, auction_id, cancelled
                     FROM auction INNER JOIN db_user 
                     ON auction.seller = db_user.user_id
                     WHERE auction_id = %s;"""
@@ -196,10 +196,18 @@ def getAuction(leilaoId):
             else:
                 row = cursor.fetchone()
                 logger.debug(f"{row}")
+                cancelled = row[7]
+                ends = row[3]
+                if cancelled:
+                    content['Status'] = 'Cancelled'
+                elif ends < datetime.now():
+                    content['Status'] = 'Closed'
+                else:
+                    content['Status'] = 'Open'
+                    content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
                 content['Price'] = str(row[0])
                 content['Title'] = row[1]
                 content['Description'] = row[2]
-                content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
                 content['Seller'] = row[4]
                 content['Starting Price'] = str(row[5])
                 content['Auction ID'] = row[6]
