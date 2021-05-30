@@ -1,3 +1,17 @@
+-- Not a trigger, but useful to many of them
+CREATE OR REPLACE PROCEDURE notify(v_user INTEGER, v_date TIMESTAMP, v_msg VARCHAR)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    id INTEGER;
+BEGIN
+    SELECT COUNT(*)+1 INTO id FROM notifs WHERE user_id = v_user;
+    
+    INSERT INTO notifs (user_id, n_id, n_date, msg) 
+    VALUES (v_user, id, v_date, v_msg); 
+END;
+$$;
+
 -- This trigger updates auction with the latest bid
 CREATE OR REPLACE FUNCTION last_bid() RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -134,15 +148,37 @@ DROP TRIGGER IF EXISTS cancelled on auction;
 CREATE TRIGGER cancelled AFTER UPDATE OF cancelled ON auction
     FOR EACH ROW EXECUTE FUNCTION cancelled();
 
-CREATE OR REPLACE PROCEDURE notify(v_user INTEGER, v_date TIMESTAMP, v_msg VARCHAR)
+-- This trigger notifies users of new mural messages
+-- TODO add check to not notify sender?
+CREATE OR REPLACE FUNCTION cancelled() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    id INTEGER;
+    cur CURSOR FOR
+        SELECT DISTINCT user_id FROM mural
+        WHERE auction_id = new.auction_id;
+    auction_seller INTEGER;
+    mural_user db_user.username%TYPE;
+    notify_date TIMESTAMP := CURRENT_TIMESTAMP;
 BEGIN
-    SELECT COUNT(*)+1 INTO id FROM notifs WHERE user_id = v_user;
-    
-    INSERT INTO notifs (user_id, n_id, n_date, msg) 
-    VALUES (v_user, id, v_date, v_msg); 
+    SELECT seller INTO STRICT auction_seller FROM auction
+    WHERE auction_id = new.auction_id;
+
+    SELECT username INTO STRICT mural_user FROM db_user
+    WHERE user_id = new.user_id;
+
+    CALL notify(auction_seller, notify_date,
+        '[Auction # ' || new.auction_id || '] ' || mural_user || ': ' || new.msg
+    );
+
+    FOR row IN cur LOOP
+        IF NOT row.user_id = auction_seller THEN 
+            CALL notify(row.user_id, notify_date,
+                '[Auction # ' || new.auction_id || '] ' || mural_user || ': ' || new.msg
+            );  
+        END IF;
+    END LOOP;
+
+    RETURN NULL;
 END;
 $$;
