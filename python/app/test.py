@@ -8,9 +8,10 @@
 
 from datetime import datetime
 from flask import Flask, json, jsonify, request, render_template
+from psycopg2 import sql
 import hashlib
 import jwt
-import logging, time, psycopg2
+import logging, psycopg2
 
 app = Flask(__name__)
 
@@ -41,16 +42,12 @@ def register():
     if conn is None:
         pass
 
-    statement = """INSERT INTO db_user (email, username, pass, user_id) 
-                VALUES (%s, %s, %s, %s);"""
+    statement = """INSERT INTO db_user (email, username, pass) 
+                VALUES (%s, %s, %s);"""
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM db_user;")
-            logger.debug(cursor.query)
-            user_id = cursor.fetchone()[0] + 1
-            logger.debug(f"User ID {user_id}")
             try:
-                cursor.execute(statement, (email, username, password, user_id))
+                cursor.execute(statement, (email, username, password))
                 logger.debug(f"Query {cursor.query} ")
                 content['Status'] = 'Registered'
             except psycopg2.errors.UniqueViolation:
@@ -61,7 +58,7 @@ def register():
     
 # Authenticate a user
 @app.route('/dbproj/user', methods=['PUT'])
-def auth():
+def authenticate():
     logger.info("PUT /dbproj/user")
     payload = request.get_json()
     fields = set(payload.keys())
@@ -80,7 +77,7 @@ def auth():
     username = payload['username']
     password = payload['password'].encode()
     password = hashlib.sha256(password).digest()
-    statement = "SELECT user_id, pass FROM db_user WHERE username=%s"
+    statement = "SELECT user_id, pass, banned FROM db_user WHERE username=%s"
     with conn:
         with conn.cursor() as cursor:
             cursor.execute(statement, (username,))
@@ -89,7 +86,9 @@ def auth():
                 row = cursor.fetchone()
                 userId = row[0]
                 hash = bytes(row[1])
-                if password == hash:
+                if row[2] == True:
+                    content['Error'] = 'User is banned'
+                elif password == hash:
                     logger.debug("Authenticated")
                     content['authToken'] = getToken(username, userId)
                 else:
@@ -107,8 +106,11 @@ def newAuction():
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    if readToken(authToken) is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
     required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends'}
     payload = request.get_json()
     if payload is None:
@@ -157,8 +159,11 @@ def getAuction(leilaoId):
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    if readToken(authToken) is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
     
     conn = dbConn()
     if conn is None:
@@ -232,8 +237,11 @@ def listAuctions():
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    if readToken(authToken) is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
     
     conn = dbConn()
     if conn is None:
@@ -264,8 +272,11 @@ def searchAuctions(keyword):
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    if readToken(authToken) is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
     
     content = {'Operation': 'Search for open auction', 'Keyword': keyword}
     conn = dbConn()
@@ -299,9 +310,11 @@ def bidAuction(leilaoId, licitacao):
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    token = readToken(authToken)
-    if authToken is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        token = auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
     
     conn = dbConn()
     if conn is None:
@@ -333,23 +346,59 @@ def changeAuction(leilaoId):
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    token = readToken(authToken)
-    if token is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        token = auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
         
     payload = request.get_json()
-    fields = set(payload.keys())
+    present = set()
+    if payload is not None:
+        fields = set(payload.keys())
+        accepted = {'title', 'description'}
+        present = accepted.intersection(fields)
+    if payload is None or len(present) == 0:
+        return jsonify({'Error': 'Nothing to be done'})
 
     conn = dbConn()
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
     
+    commonSQL = sql.SQL("UPDATE auction SET {fields} WHERE auction_id = %(auctionId)s")
+    titleSQL = sql.SQL("title = %(title)s")
+    descriptionSQL = sql.SQL("description = %(description)s")
+
+    payload.update({'auctionId': leilaoId})
+    logger.debug(payload)
+    content = dict()
     with conn:
         with conn.cursor() as cursor:
-            pass
+            cursor.execute("SELECT seller FROM auction WHERE auction_id = %s", (leilaoId, ))
+            if cursor.rowcount == 0:
+                cursor.close()
+                return jsonify({'Error': 'Auction not found'})
+            if token.get('userId') != cursor.fetchone()[0]:
+                cursor.close()
+                return jsonify({'Error': 'Not seller'})
+        with conn.cursor() as cursor:
+            if 'title' in present:
+                query = commonSQL.format(fields=titleSQL)
+                if 'description' in present:
+                        query = commonSQL.format(fields=sql.SQL(', ').join([titleSQL, descriptionSQL]))        
+            elif 'description' in present:
+                query = commonSQL.format(fields=descriptionSQL)
+            
+            try:
+                cursor.execute(query, payload)
+                logger.debug(cursor.query)
+                content['Status'] = 'Success'
+            except psycopg2.Error as e:
+                logger.error(e.diag.message_primary)
+                content['Error'] = 'Something went wrong'
     conn.close()
     
-    return jsonify({'Error': 'Not yet implemented'})
+    return jsonify(content)
 
 # Post a message
 @app.route('/dbproj/message/<leilaoId>', methods=['POST'])
@@ -358,9 +407,11 @@ def postMessage(leilaoId):
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    token = readToken(authToken)
-    if token is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        token = auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
 
     payload = request.get_json()
     required = {'message'}
@@ -399,9 +450,11 @@ def activity():
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    token = readToken(authToken)
-    if token is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:    
+        token = auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
 
     conn = dbConn()
     if conn is None:
@@ -440,9 +493,12 @@ def notifications():
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
-    token = readToken(authToken)
-    if token is None:
-        return jsonify({'Error': 'Invalid authToken'})
+    try:
+        token = auth(authToken)
+    except Exception as e:
+        logger.debug(str(e))
+        return jsonify({'Error': str(e)})
+    
     logger.debug(f"userID {token.get('userId')}")
     statement = """SELECT n_date, msg FROM notifs
                 WHERE user_id = %(userId)s
@@ -479,27 +535,48 @@ def dbConn():
         connection = None
     return connection
 
-def getKey():
-    with open("secret/secret.key", "rb") as f:
-        key = f.read()
-        f.close()
-    return key
-
 # Get JWT for user
 def getToken(username, userId):
     payload = {'userId': userId, 'username': username}
-    return jwt.encode(payload, getKey(), algorithm='HS256')
+    return jwt.encode(payload, app.secret_key, algorithm='HS256')
 
 # Read user token
 def readToken(token):
     logger.debug(f"Decoding token {token}")
     try:
-        decoded = jwt.decode(token, getKey(), algorithms='HS256') 
+        decoded = jwt.decode(token, app.secret_key, algorithms='HS256') 
         logger.debug("Valid token")
     except jwt.InvalidSignatureError:
         logger.debug(f"Invalid token signature")
         decoded = None
     return decoded
+
+# Token may be valid, but user not registered or banned
+def auth(authToken):
+    token = readToken(authToken)
+    if token is None:
+        raise Exception('Invalid token')
+
+    conn = dbConn()
+    if conn is None:
+        raise Exception('Connection to db failed')
+
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT user_id, valid FROM db_user WHERE username = %s", (token.get('username'),))
+            if cursor.rowcount == 1:
+                row = cursor.fetchone()
+                if row[0] == token.get('userId'):
+                    if row[1] == False:
+                        raise Exception('User is banned')
+                else:
+                    raise Exception('User ID does not match')
+            else:
+                raise Exception('User does not exist')
+
+    conn.close()
+
+    return token
 
 ##########################
 #          Main          #
@@ -517,5 +594,9 @@ if __name__ == '__main__':
                               '%H:%M:%S')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
+
+    with open('secret/secret.key', 'rb') as f:
+        app.secret_key = f.read()
+        f.close()
 
     app.run(host='0.0.0.0', debug=True, threaded=True)
