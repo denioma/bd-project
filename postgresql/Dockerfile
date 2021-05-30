@@ -16,4 +16,7 @@ COPY sql/setup.sql /docker-entrypoint-initdb.d/
 
 COPY sql/triggers.sql /docker-entrypoint-initdb.d/
 
+# FIX DELETE THIS ON FINAL
+COPY sql/useful.sql ./docker-entrypoint-initdb.d/
+
 EXPOSE 5432
