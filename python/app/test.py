@@ -436,7 +436,34 @@ def activity():
 
 @app.route('/dbproj/user/notifications', methods=['GET'])
 def notifications():
-    pass
+    logger.info('GET /dbproj/user/notifications')
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    token = readToken(authToken)
+    if token is None:
+        return jsonify({'Error': 'Invalid authToken'})
+    logger.debug(f"userID {token.get('userId')}")
+    statement = """SELECT n_date, msg FROM notifs
+                WHERE user_id = %(userId)s
+                ORDER BY n_date DESC"""
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    content = []
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(statement, token)
+            for row in cursor:
+                content.append({
+                    "Date": row[0],
+                    "Message": row[1]
+                })
+    conn.close()
+
+    return jsonify(content)
 
 # Not so hidden easter egg
 @app.route('/bangers')
