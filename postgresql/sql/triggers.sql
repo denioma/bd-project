@@ -29,7 +29,7 @@ BEGIN
 
     IF ends < CURRENT_TIMESTAMP THEN
         RAISE EXCEPTION 'Auction is closed';
-    ELSIF cancelled = true  THEN
+    ELSIF cancelled = true THEN
         RAISE EXCEPTION 'Auction is cancelled';
     ELSIF current_price >= NEW.price THEN
         RAISE EXCEPTION 'Bid is not higher than current price';
@@ -51,8 +51,7 @@ AS $$
 DECLARE
     id INTEGER;
 BEGIN
-    SELECT COUNT(*)+1 FROM history WHERE auction_id = NEW.auction_id
-    INTO id;
+    SELECT COUNT(*)+1 INTO id FROM history WHERE auction_id = NEW.auction_id;
 
     INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
     VALUES (NEW.auction_id, id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
@@ -77,9 +76,8 @@ BEGIN
         RETURN NEW;
     END IF;
     
-    SELECT COUNT(*)+1 FROM notifs
-    WHERE user_id = old.last_bidder
-    INTO id;
+    SELECT COUNT(*)+1 INTO id FROM notifs
+    WHERE user_id = old.last_bidder;
 
     SELECT username FROM db_user
     WHERE user_id = new.last_bidder
@@ -97,3 +95,22 @@ $$;
 DROP TRIGGER IF EXISTS outbidded ON auction;
 CREATE TRIGGER outbidded BEFORE UPDATE OF last_bidder ON auction
     FOR EACH ROW EXECUTE FUNCTION outbidded(); 
+
+-- Banning a user
+CREATE OR REPLACE PROCEDURE ban(v_user INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    is_valid BOOL;
+BEGIN
+    SELECT valid INTO is_valid FROM db_user WHERE user_id = v_user;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User does not exist';
+    ELSIF is_valid = false THEN
+        RAISE EXCEPTION 'User is already banned';
+    END IF;
+
+    UPDATE db_user SET valid = false WHERE user_id = v_user;
+END;
+$$;
