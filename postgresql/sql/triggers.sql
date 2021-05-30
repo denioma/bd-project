@@ -14,7 +14,6 @@ DROP TRIGGER IF EXISTS last_bid ON bid;
 CREATE TRIGGER last_bid AFTER INSERT ON bid 
     FOR EACH ROW EXECUTE FUNCTION last_bid();
 
-
 -- This trigger prevents any insertions into bid for a closed auction or a lower bid
 CREATE OR REPLACE FUNCTION bid_open() RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -65,7 +64,6 @@ CREATE TRIGGER hist_update AFTER INSERT OR UPDATE OF title, description ON aucti
     FOR EACH ROW EXECUTE FUNCTION hist_update();
 
 -- This trigger notifies the outbidded user
--- TODO Test this
 CREATE OR REPLACE FUNCTION outbidded() RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
