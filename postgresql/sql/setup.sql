@@ -22,7 +22,7 @@ CREATE TABLE auction (
 	price			NUMERIC(8,2) NOT NULL,
 	title			VARCHAR(128) NOT NULL,
 	description		VARCHAR(512),
-	ends			TIMESTAMPTZ NOT NULL,
+	ends			TIMESTAMP NOT NULL,
 	seller	    	INTEGER NOT NULL,
 	last_bidder		INTEGER,
 	ongoing			BOOL NOT NULL DEFAULT TRUE,
@@ -34,7 +34,7 @@ CREATE TABLE bid (
 	auction_id		INTEGER,
 	bidder 			INTEGER,
 	bid_id			SERIAL,
-	bid_date		TIMESTAMPTZ,
+	bid_date		TIMESTAMP,
 	price			NUMERIC(8,2) NOT NULL,
 	valid			BOOL NOT NULL DEFAULT false,
 	PRIMARY KEY(auction_id, bidder, bid_id)
@@ -44,15 +44,15 @@ CREATE TABLE mural (
 	auction_id	INTEGER,
 	user_id 	INTEGER,
 	m_id      	SERIAL,
-	m_date		TIMESTAMPTZ NOT NULL,
+	m_date		TIMESTAMP NOT NULL,
 	msg			VARCHAR(128) NOT NULL,
 	PRIMARY KEY(auction_id, user_id, m_id)
 );
 
 CREATE TABLE history (
 	auction_id 		INTEGER,
-	hist_id	    	SERIAL,
-	hist_date		TIMESTAMPTZ NOT NULL,
+	hist_id	    	INTEGER,
+	hist_date		TIMESTAMP NOT NULL,
 	title	    	VARCHAR(128),
 	description 	VARCHAR(512),
 	PRIMARY KEY(auction_id, hist_id)
@@ -61,7 +61,7 @@ CREATE TABLE history (
 CREATE TABLE notifs (
 	user_id 	INTEGER,
 	n_id		INTEGER,
-	n_date		TIMESTAMPTZ NOT NULL,
+	n_date		TIMESTAMP NOT NULL,
 	msg		    VARCHAR(512) NOT NULL,
 	seen		BOOL NOT NULL DEFAULT false,
 	PRIMARY KEY(user_id, n_id)
