@@ -2,11 +2,10 @@
 # Final Project - REST API
 
 # Authors:
-#   David Valente Pereira Barros Leitão - 
-#   João António Correia Vaz - 
+#   David Valente Pereira Barros Leitão - 2019223148
+#   João António Correia Vaz - 2019218159
 #   Rodrigo Alexandre da Mota Machado - 2019218299
 
-# IDEA Consider switching authToken from Request body to headers
 from datetime import datetime
 from flask import Flask, json, jsonify, request, render_template
 import hashlib
@@ -22,7 +21,7 @@ def landing():
 
 @app.route("/dbproj/user", methods=['POST'])
 def register():
-    logger.info("POST /dbproj/users")
+    logger.info("POST /dbproj/user")
     payload = request.get_json()
     required = {'username', 'password', 'email'}    
     fields = set(payload.keys())
@@ -129,15 +128,12 @@ def newAuction():
     date = datetime.strptime(date, "%a %b %d %Y %H:%M:%S %Z%z")
     authToken = readToken(authToken)
 
-    statement = """INSERT INTO auction (seller, item_id, min_price, price, title, description, ends)
-                VALUES (%(seller)s, %(artigoId)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, 
-                %(descricao)s, %(ends)s)"""
+    statement = """INSERT INTO auction (item_id, seller, min_price, price, title, description, ends)
+                VALUES (%(artigoId)s, %(seller)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)
+                RETURNING auction_id"""
     
-    args = {'seller': authToken['userId']}
-    for key in required:
-        if key != 'ends':
-            args.update({key: payload[key]})
-    args.update({'ends': date})
+    args = {'seller': authToken['userId'], 'artigoId': payload['artigoId'], 'precoMinimo': payload['precoMinimo'],
+            'titulo': payload['titulo'], 'descricao': payload['descricao'], 'ends': date}
     logger.debug(args)
     
     with conn:
@@ -145,7 +141,9 @@ def newAuction():
             try:
                 cursor.execute(statement, args)
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                content['Status'] = 'Success'
+                leilaoId = cursor.fetchone()[0]
+                logger.debug(f"New auctionId = {leilaoId}")
+                content['leilaoId'] = leilaoId
             except psycopg2.DataError as e:
                 content['Error'] = 'DB Exception'
                 logger.error(e.pgerror)
@@ -153,7 +151,6 @@ def newAuction():
 
     return jsonify(content)
 
-# TODO Test Mural
 @app.route('/dbproj/leilao/<leilaoId>', methods=['GET'])
 def getAuction(leilaoId):
     logger.info(f"GET /dbproj/leilao/{leilaoId}")
@@ -169,18 +166,18 @@ def getAuction(leilaoId):
 
     content = dict()
     auctionSQL = """SELECT price, title, description, ends, username, 
-                    min_price 
+                    min_price, auction_id
                     FROM auction INNER JOIN db_user 
                     ON auction.seller = db_user.user_id
-                    WHERE item_id = %s;"""
-    historySQL = """SELECT username, b_date, price 
+                    WHERE auction_id = %s;"""
+    historySQL = """SELECT username, bid_date, price 
                     FROM bid INNER JOIN db_user
                     ON bid.bidder = db_user.user_id                  
-                    WHERE item_id = %s ORDER BY b_date;"""
+                    WHERE auction_id = %s ORDER BY bid_date;"""
     messageSQL = """SELECT username, m_date, msg 
                     FROM mural JOIN db_user
                     ON mural.user_id = db_user.user_id
-                    WHERE item_id = %s ORDER BY m_date;"""
+                    WHERE auction_id = %s ORDER BY m_date;"""
 
     with conn:
         with conn.cursor() as cursor:
@@ -197,6 +194,7 @@ def getAuction(leilaoId):
                 content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
                 content['Seller'] = row[4]
                 content['Starting Price'] = str(row[5])
+                content['Auction ID'] = row[6]
                 cursor.execute(historySQL, (leilaoId,))
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 if cursor.rowcount == 0:
@@ -241,7 +239,7 @@ def listAuctions():
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
     
-    statement = """SELECT item_id, description FROM auction 
+    statement = """SELECT auction_id, description FROM auction 
                 WHERE ends >= CURRENT_TIMESTAMP"""
 
     with conn:
@@ -294,6 +292,7 @@ def searchAuctions(keyword):
     return jsonify(content)
 
 # Bid on an open auction
+# TODO Stop bid on seller's own listing
 @app.route('/dbproj/licitar/leilao/<leilaoId>/<licitacao>', methods=['GET'])
 def bidAuction(leilaoId, licitacao):
     logger.info(f"GET /dbproj/licitar/leilao/{leilaoId}/{licitacao}")
@@ -309,14 +308,14 @@ def bidAuction(leilaoId, licitacao):
         return jsonify({'Error': 'Connection to db failed'})
 
     userId = token.get('userId')
-    statement = """INSERT INTO bid (item_id, b_id, b_date, price, bidder) 
-                VALUES (%(itemId)s, %(bidId)s, current_timestamp, %(price)s, %(bidder)s)"""
+    statement = """INSERT INTO bid (auction_id, bid_id, bid_date, price, bidder) 
+                VALUES (%(auctionId)s, %(bidId)s, current_timestamp, %(price)s, %(bidder)s)"""
     content = dict()
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*)+1 FROM bid WHERE bidder = %s", (userId,))
             bidId = cursor.fetchone()[0]
-            args = {'itemId': leilaoId, 'price': licitacao, 'bidder': userId, 'bidId': bidId}
+            args = {'auctionId': leilaoId, 'price': licitacao, 'bidder': userId, 'bidId': bidId}
             try:
                 cursor.execute(statement, args)
                 content['Status'] = 'Success'
@@ -392,7 +391,52 @@ def postMessage(leilaoId):
     conn.close()
 
     return jsonify(content)
-    
+
+# Get user activity
+@app.route('/dbproj/user/activity', methods=['GET'])
+def activity():
+    logger.info(f"POST /dbproj/user/activity")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    token = readToken(authToken)
+    if token is None:
+        return jsonify({'Error': 'Invalid authToken'})
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    sellerSQL = """SELECT auction.auction_id, auction.title, auction.description 
+                FROM auction WHERE auction.seller = %(userId)s ORDER BY auction_id"""
+    bidderSQL = """SELECT auction.auction_id, auction.title, auction.description 
+                FROM auction JOIN bid ON bid.auction_id = auction.auction_id
+                WHERE bid.bidder = %(userId)s ORDER BY auction_id"""
+
+    content = {'Seller': [], 'Bidder': []}
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(sellerSQL, token)
+            for row in cursor:
+                content['Seller'].append({
+                    'Auction ID': row[0],
+                    'Title': row[1],
+                    'Description': row[2]
+                })
+            cursor.execute(bidderSQL, token)
+            for row in cursor:
+                content['Bidder'].append({
+                    'Auction ID': row[0],
+                    'Title': row[1],
+                    'Description': row[2]
+                })
+    conn.close()
+        
+    return jsonify(content)
+
+@app.route('/dbproj/user/notifications', methods=['GET'])
+def notifications():
+    pass
 
 # Not so hidden easter egg
 @app.route('/bangers')
