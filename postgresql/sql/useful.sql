@@ -16,3 +16,12 @@ BEGIN
     TRUNCATE TABLE notifs;
 END;
 $$;
+
+CREATE OR REPLACE PROCEDURE make_admin(v_user INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+    UPDATE db_user SET admin = true WHERE user_id = v_user;
+END;
+$$;

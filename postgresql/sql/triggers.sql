@@ -56,6 +56,94 @@ BEGIN
 END;
 $$;
 
+-- Procedure to ban a user
+CREATE OR REPLACE PROCEDURE ban(v_user INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    is_valid BOOL;
+    invalid_from INTEGER;
+    new_id INTEGER;
+    valid_id INTEGER;
+    valid_user INTEGER;
+    valid_price bid.price%TYPE;
+    end_date TIMESTAMP;
+    is_cancelled BOOL;
+    auction_cursor CURSOR FOR
+        SELECT DISTINCT auction_id FROM bid
+        WHERE bidder = v_user;
+BEGIN
+    SELECT valid INTO is_valid FROM db_user WHERE user_id = v_user;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User does not exist';
+    ELSIF is_valid = false THEN
+        RAISE EXCEPTION 'User is already banned';
+    END IF;
+    
+    LOCK table bid IN SHARE MODE;
+    ALTER TABLE bid DISABLE TRIGGER bid_open;
+
+    UPDATE db_user SET valid = false WHERE user_id = v_user;
+    
+    FOR row in auction_cursor LOOP
+        -- Skip closed or cancelled auctions
+        SELECT ends, cancelled INTO end_date, is_cancelled FROM auction 
+        WHERE auction_id = row.auction_id;
+    
+        CONTINUE WHEN is_cancelled OR end_date < CURRENT_TIMESTAMP;
+
+        -- Invalidate all bids including and after the banned user's first bid
+        SELECT MIN(bid_id) INTO invalid_from FROM bid 
+        WHERE bidder = v_user AND auction_id = row.auction_id;
+        UPDATE bid SET valid = false WHERE auction_id = row.auction_id 
+        AND bid_id >= invalid_from;
+
+        -- Get new bid_id
+        SELECT bid_id + 1 INTO new_id FROM bid WHERE bid_id = (
+            SELECT MAX(bid_id) from bid WHERE auction_id = row.auction_id
+        );
+        
+        -- Get last valid bid_id and bidder
+        SELECT bid_id, bidder INTO valid_id, valid_user FROM bid WHERE bid_id = (
+            SELECT COALESCE(MAX(bid_id), -1) FROM bid WHERE valid AND auction_id = row.auction_id
+        );
+
+        IF NOT FOUND THEN
+            valid_id := -1;
+        END IF;
+        
+        -- Get the valid_price
+        IF valid_id = -1 THEN
+            ALTER TABLE auction DISABLE TRIGGER outbidded;
+            UPDATE auction SET price = min_price, last_bidder = NULL 
+            WHERE auction_id = row.auction_id;
+            ALTER TABLE auction ENABLE TRIGGER outbidded;
+            CONTINUE;
+        ELSIF valid_id < invalid_from THEN
+            SELECT price INTO valid_price FROM bid WHERE bid_id = valid_id;
+        ELSE
+            SELECT price INTO valid_price FROM bid WHERE bid_id = invalid_from; 
+        END IF;
+        -- Insert new valid bid
+        ALTER TABLE auction DISABLE TRIGGER outbidded;
+        INSERT INTO bid (auction_id, bidder, bid_id, bid_date, price)
+        VALUES(row.auction_id, valid_user, new_id, CURRENT_TIMESTAMP, valid_price);
+        ALTER TABLE bid ENABLE TRIGGER bid_open;
+        ALTER TABLE auction ENABLE TRIGGER outbidded;
+
+        -- Notify bidders
+        FOR row in SELECT bidder FROM bid WHERE bidder != v_user AND auction_id = row.auction_id
+        LOOP
+            CALL notify(row.bidder, current_timestamp, 
+                '[System] User #' || v_user || ' was banned. The highest bid in auction #' || 
+                row.auction_id || 'is now of ' || price '.'
+            );
+        END LOOP;
+    END LOOP;
+END;
+$$;
+
 -- This trigger updates auction with the latest bid
 CREATE OR REPLACE FUNCTION last_bid() RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -86,7 +174,7 @@ BEGIN
 
     IF ends < CURRENT_TIMESTAMP THEN
         RAISE EXCEPTION 'Auction is closed';
-    ELSIF cancelled = true  THEN
+    ELSIF cancelled = true THEN
         RAISE EXCEPTION 'Auction is cancelled';
     ELSIF current_price >= NEW.price THEN
         RAISE EXCEPTION 'Bid is not higher than current price';
@@ -108,8 +196,7 @@ AS $$
 DECLARE
     id INTEGER;
 BEGIN
-    SELECT COUNT(*)+1 FROM history WHERE auction_id = NEW.auction_id
-    INTO id;
+    SELECT COUNT(*)+1 INTO id FROM history WHERE auction_id = NEW.auction_id;
 
     INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
     VALUES (NEW.auction_id, id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
@@ -133,9 +220,8 @@ BEGIN
         RETURN NEW;
     END IF;
     
-    SELECT COUNT(*)+1 FROM notifs
-    WHERE user_id = old.last_bidder
-    INTO id;
+    SELECT COUNT(*)+1 INTO id FROM notifs
+    WHERE user_id = old.last_bidder;
 
     SELECT username FROM db_user
     WHERE user_id = new.last_bidder
