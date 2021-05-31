@@ -63,7 +63,7 @@ AS $$
 DECLARE
     is_valid BOOL;
     invalid_from INTEGER;
-    last_id INTEGER;
+    new_id INTEGER;
     valid_id INTEGER;
     valid_user INTEGER;
     valid_price bid.price%TYPE;
@@ -81,8 +81,8 @@ BEGIN
         RAISE EXCEPTION 'User is already banned';
     END IF;
     
-    LOCK TABLE bid IN SHARE MODE;
-    ALTER TABLE bid DISABLE TRIGGER ALL;
+    LOCK table bid IN SHARE MODE;
+    ALTER TABLE bid DISABLE TRIGGER bid_open;
 
     UPDATE db_user SET valid = false WHERE user_id = v_user;
     
@@ -91,32 +91,46 @@ BEGIN
         SELECT ends, cancelled INTO end_date, is_cancelled FROM auction 
         WHERE auction_id = row.auction_id;
     
-        CONTINUE WHEN is_cancelled OR ends < CURRENT_TIMESTAMP;
+        CONTINUE WHEN is_cancelled OR end_date < CURRENT_TIMESTAMP;
 
         -- Invalidate all bids including and after the banned user's first bid
         SELECT MIN(bid_id) INTO invalid_from FROM bid 
-        WHERE user_id = v_user AND auction_id = row.auction_id;
+        WHERE bidder = v_user AND auction_id = row.auction_id;
         UPDATE bid SET valid = false WHERE auction_id = row.auction_id 
         AND bid_id >= invalid_from;
 
-        -- Get new bid_id (-1)
-        SELECT bid_id INTO last_id FROM bid WHERE bid_id = MAX(bid_id);
+        -- Get new bid_id
+        SELECT bid_id + 1 INTO new_id FROM bid WHERE bid_id = (
+            SELECT MAX(bid_id) from bid WHERE auction_id = row.auction_id
+        );
         
         -- Get last valid bid_id and bidder
         SELECT bid_id, bidder INTO valid_id, valid_user FROM bid WHERE bid_id = (
-            SELECT MAX(bid_id) FROM bid WHERE valid
+            SELECT COALESCE(MAX(bid_id), -1) FROM bid WHERE valid AND auction_id = row.auction_id
         );
+
+        IF NOT FOUND THEN
+            valid_id := -1;
+        END IF;
         
         -- Get the valid_price
-        IF valid_id < invalid_from THEN
+        IF valid_id = -1 THEN
+            ALTER TABLE auction DISABLE TRIGGER outbidded;
+            UPDATE auction SET price = min_price, last_bidder = NULL 
+            WHERE auction_id = row.auction_id;
+            ALTER TABLE auction ENABLE TRIGGER outbidded;
+            CONTINUE;
+        ELSIF valid_id < invalid_from THEN
             SELECT price INTO valid_price FROM bid WHERE bid_id = valid_id;
         ELSE
             SELECT price INTO valid_price FROM bid WHERE bid_id = invalid_from; 
         END IF;
-        
         -- Insert new valid bid
+        ALTER TABLE auction DISABLE TRIGGER outbidded;
         INSERT INTO bid (auction_id, bidder, bid_id, bid_date, price)
-        VALUES(row.auction_id, valid_user, last_id+1, CURRENT_TIMESTAMP, valid_price);
+        VALUES(row.auction_id, valid_user, new_id, CURRENT_TIMESTAMP, valid_price);
+        ALTER TABLE bid ENABLE TRIGGER bid_open;
+        ALTER TABLE auction ENABLE TRIGGER outbidded;
 
         -- Notify bidders
         FOR row in SELECT bidder FROM bid WHERE bidder != v_user AND auction_id = row.auction_id
@@ -127,7 +141,6 @@ BEGIN
             );
         END LOOP;
     END LOOP;
-    ALTER TABLE bid ENABLE TRIGGER ALL;
 END;
 $$;
 
