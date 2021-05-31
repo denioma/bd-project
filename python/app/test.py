@@ -107,7 +107,7 @@ def newAuction():
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        validate(authToken)
+        authToken = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -125,12 +125,17 @@ def newAuction():
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
 
-    postmanFormat = "%a %b %d %Y %H:%M:%S %Z%z"
-    regularFormat = "%d-%m-%Y %H:%M:%S"
     date = payload['ends']
-    date = date[:date.find(" (")]
-    date = datetime.strptime(date, postmanFormat)
-    authToken = readToken(authToken)
+    regularFormat = "%d-%m-%Y %H:%M:%S"
+    postmanFormat = "%a %b %d %Y %H:%M:%S %Z%z"
+    try:
+        date = datetime.strptime(date, regularFormat)
+    except ValueError:
+        try:
+            date = date[:date.find(" (")]
+            date = datetime.strptime(date, postmanFormat)
+        except ValueError:
+            return jsonify({'Error': 'Failed to parse timestamp'})
 
     statement = """INSERT INTO auction (item_id, seller, min_price, price, title, description, ends)
                 VALUES (%(artigoId)s, %(seller)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)
