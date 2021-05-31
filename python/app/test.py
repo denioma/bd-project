@@ -624,8 +624,8 @@ def stats():
                     GROUP BY username ORDER BY total DESC
                     LIMIT 10"""
     recentAuctions = """SELECT COUNT(*) as total FROM history
-                        WHERE hist_id = 1 and hist_date BETWEEN CURRENT_TIMESTAMP - INTERVAL '863990 seconds'
-                        AND CURRENT_TIMESTAMP + INTERVAL '863990 seconds'"""
+                        WHERE hist_date >= CURRENT_TIMESTAMP - INTERVAL '863990 seconds'
+                        AND hist_id = 1"""
 
     content = {'Sellers': [], 'Winners': []}
     with conn:
