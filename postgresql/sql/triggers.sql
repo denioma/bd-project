@@ -5,6 +5,7 @@
 --   David Valente Pereira Barros Leitão - 2019223148
 --   João António Correia Vaz - 2019218159
 --   Rodrigo Alexandre da Mota Machado - 2019218299
+----------------------------------------------------------------------------------------
 
 -- Not a trigger, but useful to many of them
 CREATE OR REPLACE PROCEDURE notify(v_user INTEGER, v_date TIMESTAMP, v_msg VARCHAR)
@@ -168,14 +169,17 @@ DECLARE
     current_price auction.price%TYPE;
     ends auction.ends%TYPE;
     cancelled auction.cancelled%TYPE;
+    seller auction.seller%TYPE;
 BEGIN
-    SELECT auction.price, auction.ends, auction.cancelled FROM auction 
-    WHERE auction_id = NEW.auction_id INTO current_price, ends, cancelled;
+    SELECT auction.price, auction.ends, auction.cancelled, auction.seller FROM auction 
+    WHERE auction_id = NEW.auction_id INTO current_price, ends, cancelled, seller;
 
     IF ends < CURRENT_TIMESTAMP THEN
         RAISE EXCEPTION 'Auction is closed';
     ELSIF cancelled = true THEN
         RAISE EXCEPTION 'Auction is cancelled';
+    ELSIF seller = new.bidder THEN
+        RAISE EXCEPTION 'Seller cannot bid';
     ELSIF current_price >= NEW.price THEN
         RAISE EXCEPTION 'Bid is not higher than current price';
     ELSE

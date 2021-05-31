@@ -1,3 +1,12 @@
+-- Databases - 2020/2021
+-- Final Project - Useful procedures in PL/pgSQL
+
+-- Authors:
+--   David Valente Pereira Barros Leitão - 2019223148
+--   João António Correia Vaz - 2019218159
+--   Rodrigo Alexandre da Mota Machado - 2019218299
+----------------------------------------------------------------------
+
 CREATE OR REPLACE PROCEDURE reset_murals()
 LANGUAGE plpgsql
 AS $$
