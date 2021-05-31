@@ -5,3 +5,5 @@ Hello NIMGERS
 hahaha nae nigga nae nae nigga nigga nae nae
 
 stooooor? como e que passo à cadeira 
+
+Folhas - nheeeeeee? 0.0
