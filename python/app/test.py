@@ -18,8 +18,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def landing():
-    return """Welcome to the Auction House!<br>
-            I have a splitting headache"""
+    return render_template('index.html')
 
 @app.route("/dbproj/user", methods=['POST'])
 def register():
@@ -109,7 +108,7 @@ def newAuction():
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        validate(authToken)
+        authToken = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
@@ -128,9 +127,16 @@ def newAuction():
         return jsonify({'Error': 'Connection to db failed'})
 
     date = payload['ends']
-    date = date[:date.find(" (")]
-    date = datetime.strptime(date, "%a %b %d %Y %H:%M:%S %Z%z")
-    authToken = readToken(authToken)
+    regularFormat = "%d-%m-%Y %H:%M:%S"
+    postmanFormat = "%a %b %d %Y %H:%M:%S %Z%z"
+    try:
+        date = datetime.strptime(date, regularFormat)
+    except ValueError:
+        try:
+            date = date[:date.find(" (")]
+            date = datetime.strptime(date, postmanFormat)
+        except ValueError:
+            return jsonify({'Error': 'Failed to parse timestamp'})
 
     statement = """INSERT INTO auction (item_id, seller, min_price, price, title, description, ends)
                 VALUES (%(artigoId)s, %(seller)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)
@@ -173,7 +179,7 @@ def getAuction(leilaoId):
 
     content = dict()
     auctionSQL = """SELECT price, title, description, ends, username, 
-                    min_price, auction_id
+                    min_price, auction_id, cancelled
                     FROM auction INNER JOIN db_user 
                     ON auction.seller = db_user.user_id
                     WHERE auction_id = %s;"""
@@ -195,10 +201,18 @@ def getAuction(leilaoId):
             else:
                 row = cursor.fetchone()
                 logger.debug(f"{row}")
+                cancelled = row[7]
+                ends = row[3]
+                if cancelled:
+                    content['Status'] = 'Cancelled'
+                elif ends < datetime.now():
+                    content['Status'] = 'Closed'
+                else:
+                    content['Status'] = 'Open'
+                    content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
                 content['Price'] = str(row[0])
                 content['Title'] = row[1]
                 content['Description'] = row[2]
-                content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
                 content['Seller'] = row[4]
                 content['Starting Price'] = str(row[5])
                 content['Auction ID'] = row[6]
@@ -250,7 +264,7 @@ def listAuctions():
         return jsonify({'Error': 'Connection to db failed'})
     
     statement = """SELECT auction_id, description FROM auction 
-                WHERE ends >= CURRENT_TIMESTAMP"""
+                WHERE ends >= CURRENT_TIMESTAMP AND NOT cancelled"""
 
     with conn:
         with conn.cursor() as cursor:
@@ -287,7 +301,7 @@ def searchAuctions(keyword):
         return jsonify({'Error': 'Connection to db failed'})
     
     statement = """SELECT auction.item_id, auction.description
-                FROM auction WHERE auction.item_id = %(keyword)s 
+                FROM auction WHERE auction.item_id = %(keyword)s
                 OR auction.description LIKE %(regex)s"""
 
     with conn:
@@ -341,6 +355,7 @@ def bidAuction(leilaoId, licitacao):
     
     return jsonify(content)
 
+# Change auction details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['PUT'])
 def changeAuction(leilaoId):
     logger.info(f"PUT /dbproj/leilao/{leilaoId}")
@@ -430,16 +445,26 @@ def postMessage(leilaoId):
     with conn:
         userId = token.get('userId')
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*)+1 FROM mural WHERE user_id = %s", (userId,))
-            msgId = cursor.fetchone()[0]
-
-            statement = """INSERT INTO mural (m_id, item_id, user_id, m_date, msg)
-                        VALUES (%(msgId)s, %(itemId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
-            args = {'msgId': msgId, 'itemId': leilaoId, 'userId': userId, 'message': msg}
-            
-            cursor.execute(statement, args)
-            content['Status'] = 'Success'
-    
+            try:
+                cursor.execute("SELECT cancelled, ends FROM auction WHERE auction_id = %s", (leilaoId,))
+                if cursor.rowcount == 0:
+                    content['Error'] = 'Auction does not exist'
+                else:
+                    row = cursor.fetchone()
+                    if row[0] == True:
+                        content['Error'] = 'Auction has been cancelled'
+                    elif row[1] < datetime.now():
+                        content['Error'] = 'Auction has ended'
+                    else:
+                        statement = """INSERT INTO mural (auction_id, user_id, m_date, msg)
+                                    VALUES (%(auctionId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
+                        args = {'auctionId': leilaoId, 'userId': userId, 'message': msg}
+                        
+                        cursor.execute(statement, args)
+                        content['Status'] = 'Success'
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Erro'] = str(e)
     conn.close()
 
     return jsonify(content)
@@ -501,23 +526,72 @@ def notifications():
         return jsonify({'Error': str(e)})
     
     logger.debug(f"userID {token.get('userId')}")
-    statement = """SELECT n_date, msg FROM notifs
+    statement = """SELECT n_date, msg, seen FROM notifs
                 WHERE user_id = %(userId)s
                 ORDER BY n_date DESC"""
+    seen = "UPDATE notifs SET seen = true WHERE user_id = %(userId)s"
 
     conn = dbConn()
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
 
-    content = []
+    content = {'Seen': [], 'Unseen': []}
     with conn:
         with conn.cursor() as cursor:
             cursor.execute(statement, token)
             for row in cursor:
-                content.append({
-                    "Date": row[0],
-                    "Message": row[1]
-                })
+                if row[2] == True:
+                    content['Seen'].append({
+                        "Date": row[0],
+                        "Message": row[1]
+                    })
+                else:
+                    content['Unseen'].append({
+                        "Date": row[0],
+                        "Message": row[1]
+                    })
+            try:
+                cursor.execute(seen, token)
+            except Exception as e:
+                logger.error(str(e))
+    conn.close()
+
+    return jsonify(content)
+
+@app.route('/dbproj/admin/cancel/<auctionId>', methods=['POST'])
+def cancelAuction(auctionId):
+    logger.info(f"POST /dbproj/leiloes/{auctionId}")
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    try:
+        token = validate(authToken, isAdmin=True)
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({'Error': str(e)})
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    check = "SELECT cancelled FROM auction WHERE auction_id = %s FOR UPDATE"
+    statement = "UPDATE auction SET cancelled = true WHERE auction_id = %s"
+    content = dict()
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(check, (auctionId,))
+            if cursor.rowcount == 0:
+                content['Error'] = 'Auction does not exist'
+            else:
+                if cursor.fetchone()[0] == True:
+                    content['Error'] = 'Auction already cancelled'
+                else:
+                    try:
+                        cursor.execute(statement, (auctionId,))
+                        content['Status'] = 'Success'
+                    except psycopg2.Error as e:
+                        logger.error(str(e))
+                        content['Error'] = e.diag.message_primary
     conn.close()
 
     return jsonify(content)
@@ -681,8 +755,7 @@ if __name__ == '__main__':
     ch.setLevel(logging.DEBUG)
 
     # Logger formatter
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s',
-                              '%H:%M:%S')
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s', '%H:%M:%S')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 

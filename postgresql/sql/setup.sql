@@ -1,3 +1,11 @@
+-- Databases - 2020/2021
+-- Final Project - Table Setup DDL/SQL
+
+-- Authors:
+--   David Valente Pereira Barros Leitão - 2019223148
+--   João António Correia Vaz - 2019218159
+--   Rodrigo Alexandre da Mota Machado - 2019218299
+
 DROP TABLE IF EXISTS notifs;
 DROP TABLE IF EXISTS history;
 DROP TABLE IF EXISTS bid; 
