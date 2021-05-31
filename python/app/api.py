@@ -39,7 +39,7 @@ def register():
     email = payload['email']
     password = payload['password']
     password = password.encode()
-    # TODO Change password hashing to a more secure scheme
+    # Hash the password with SHA256
     password = hashlib.sha256(password).digest()
     content = dict()
     

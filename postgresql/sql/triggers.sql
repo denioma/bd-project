@@ -180,8 +180,10 @@ BEGIN
         RAISE EXCEPTION 'Auction is cancelled';
     ELSIF seller = new.bidder THEN
         RAISE EXCEPTION 'Seller cannot bid';
-    ELSIF current_price >= NEW.price THEN
+    ELSIF new.bid_id > 1 AND current_price >= new.price THEN
         RAISE EXCEPTION 'Bid is not higher than current price';
+    ELSIF new.bid_id = 1 AND current_price > new.price THEN;
+        RAISE EXCEPTION 'First bid cannot be lower than starting price';
     ELSE
         RETURN NEW;
     END IF;
