@@ -29,4 +29,4 @@ RUN mkdir -p logs
 EXPOSE 5000
 
 # Run Flask App
-CMD ["python", "test.py"]
+CMD ["python", "api.py"]
