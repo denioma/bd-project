@@ -57,6 +57,9 @@ def register():
                 content['Status'] = 'Registered'
             except psycopg2.errors.UniqueViolation:
                 content['Error'] = 'Username already in use'
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -87,21 +90,25 @@ def authenticate():
     statement = "SELECT user_id, pass, valid FROM db_user WHERE username=%s"
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(statement, (username,))
-            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-            if cursor.rowcount == 1:
-                row = cursor.fetchone()
-                userId = row[0]
-                hash = bytes(row[1])
-                if row[2] == False:
-                    content['Error'] = 'User is banned'
-                elif password == hash:
-                    logger.debug("Authenticated")
-                    content['authToken'] = getToken(username, userId)
-                else:
-                    logger.debug("Authentication failed")   
-                    content['Error'] = 'Wrong password'
-            else: content['Error'] = 'User does not exist'
+            try:
+                cursor.execute(statement, (username,))
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                if cursor.rowcount == 1:
+                    row = cursor.fetchone()
+                    userId = row[0]
+                    hash = bytes(row[1])
+                    if row[2] == False:
+                        content['Error'] = 'User is banned'
+                    elif password == hash:
+                        logger.debug("Authenticated")
+                        content['authToken'] = getToken(username, userId)
+                    else:
+                        logger.debug("Authentication failed")   
+                        content['Error'] = 'Wrong password'
+                else: content['Error'] = 'User does not exist'
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
     
     return jsonify(content)
@@ -163,8 +170,8 @@ def newAuction():
                 logger.debug(f"New auctionId = {leilaoId}")
                 content['leilaoId'] = leilaoId
             except psycopg2.DataError as e:
+                logger.error(str(e))
                 content['Error'] = 'DB Exception'
-                logger.error(e.pgerror)
     conn.close()
 
     return jsonify(content)
@@ -207,56 +214,60 @@ def getAuction(leilaoId):
 
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(auctionSQL, (leilaoId,))
-            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-            if cursor.rowcount == 0:
-                content['Error'] = 'Auction not found'
-            else:
-                row = cursor.fetchone()
-                logger.debug(f"{row}")
-                cancelled = row[7]
-                ends = row[3]
-                if row[8] is not None:
-                    content['Last Bidder'] = row[8]
-                if cancelled:
-                    content['Status'] = 'Cancelled'
-                elif ends < datetime.now():
-                    content['Status'] = 'Closed'
-                else:
-                    content['Status'] = 'Open'
-                    content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
-                content['Price'] = str(row[0])
-                content['Title'] = row[1]
-                content['Description'] = row[2]
-                content['Seller'] = row[4]
-                content['Starting Price'] = str(row[5])
-                content['Auction ID'] = row[6]
-                cursor.execute(historySQL, (leilaoId,))
+            try:
+                cursor.execute(auctionSQL, (leilaoId,))
                 logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
                 if cursor.rowcount == 0:
-                    content['History'] = 'Empty'
+                    content['Error'] = 'Auction not found'
                 else:
-                    content['History'] = []
-                    for row in cursor:
-                        logger.debug(f"{row}")
-                        content['History'].append({
-                            'Bidder': row[0],
-                            'Timestamp': row[1].strftime("%d-%m-%Y %H:%M:%S"),
-                            'Bid': str(row[2])
-                        })
-                cursor.execute(messageSQL, (leilaoId,))
-                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-                if cursor.rowcount == 0:
-                    content['Mural'] = 'Empty'
-                else:
-                    content['Mural'] = []
-                    for row in cursor:
-                        logger.debug(f"{row}")
-                        content['Mural'].append({
-                            'User': row[0],
-                            'Date': row[1].strftime("%d-%m-%Y %H:%M:%S"),
-                            'Message': row[2]
-                        })
+                    row = cursor.fetchone()
+                    logger.debug(f"{row}")
+                    cancelled = row[7]
+                    ends = row[3]
+                    if row[8] is not None:
+                        content['Last Bidder'] = row[8]
+                    if cancelled:
+                        content['Status'] = 'Cancelled'
+                    elif ends < datetime.now():
+                        content['Status'] = 'Closed'
+                    else:
+                        content['Status'] = 'Open'
+                        content['Ends'] = row[3].strftime("%d-%m-%Y %H:%M:%S")
+                    content['Price'] = str(row[0])
+                    content['Title'] = row[1]
+                    content['Description'] = row[2]
+                    content['Seller'] = row[4]
+                    content['Starting Price'] = str(row[5])
+                    content['Auction ID'] = row[6]
+                    cursor.execute(historySQL, (leilaoId,))
+                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                    if cursor.rowcount == 0:
+                        content['History'] = 'Empty'
+                    else:
+                        content['History'] = []
+                        for row in cursor:
+                            logger.debug(f"{row}")
+                            content['History'].append({
+                                'Bidder': row[0],
+                                'Timestamp': row[1].strftime("%d-%m-%Y %H:%M:%S"),
+                                'Bid': str(row[2])
+                            })
+                    cursor.execute(messageSQL, (leilaoId,))
+                    logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                    if cursor.rowcount == 0:
+                        content['Mural'] = 'Empty'
+                    else:
+                        content['Mural'] = []
+                        for row in cursor:
+                            logger.debug(f"{row}")
+                            content['Mural'].append({
+                                'User': row[0],
+                                'Date': row[1].strftime("%d-%m-%Y %H:%M:%S"),
+                                'Message': row[2]
+                            })
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -284,15 +295,19 @@ def listAuctions():
 
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(statement)
-            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-            if cursor.rowcount == 0:
-                content = {'Error': 'No results'}
-            else:
-                content = []
-                for row in cursor:
-                    logger.debug(f"{row}")
-                    content.append({'auctionId': row[0], 'description': row[1]})
+            try:
+                cursor.execute(statement)
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                if cursor.rowcount == 0:
+                    content = {'Error': 'No results'}
+                else:
+                    content = []
+                    for row in cursor:
+                        logger.debug(f"{row}")
+                        content.append({'auctionId': row[0], 'description': row[1]})
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -329,14 +344,18 @@ def searchAuctions(keyword):
 
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(statement, {'itemId': itemId, 'regex': f'%{keyword}%'})
-            logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
-            if cursor.rowcount > 0: 
-                content = []
-                for row in cursor:
-                    content.append({'itemId': str(row[0]), 'description': row[1]})
-            else: 
-                content = {'Error': 'No results found'}
+            try:
+                cursor.execute(statement, {'itemId': itemId, 'regex': f'%{keyword}%'})
+                logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
+                if cursor.rowcount > 0: 
+                    content = []
+                    for row in cursor:
+                        content.append({'itemId': str(row[0]), 'description': row[1]})
+                else: 
+                    content = {'Error': 'No results found'}
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -365,15 +384,19 @@ def bidAuction(leilaoId, licitacao):
     content = dict()
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*)+1 FROM bid WHERE bidder = %s", (userId,))
-            bidId = cursor.fetchone()[0]
-            args = {'auctionId': leilaoId, 'price': licitacao, 'bidder': userId, 'bidId': bidId}
             try:
-                cursor.execute(statement, args)
-                content['Status'] = 'Success'
+                cursor.execute("SELECT COUNT(*)+1 FROM bid WHERE bidder = %s", (userId,))
+                bidId = cursor.fetchone()[0]
+                args = {'auctionId': leilaoId, 'price': licitacao, 'bidder': userId, 'bidId': bidId}
+                try:
+                    cursor.execute(statement, args)
+                    content['Status'] = 'Success'
+                except psycopg2.Error as e:
+                    logger.debug(e.diag.message_primary)
+                    content['Error'] = e.diag.message_primary
             except psycopg2.Error as e:
-                logger.debug(e.diag.message_primary)
-                content['Error'] = e.diag.message_primary
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
     
     return jsonify(content)
@@ -418,13 +441,17 @@ def updateAuction(leilaoId):
     content = dict()
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT seller FROM auction WHERE auction_id = %s", (leilaoId, ))
-            if cursor.rowcount == 0:
-                cursor.close()
-                return jsonify({'Error': 'Auction not found'})
-            if token.get('userId') != cursor.fetchone()[0]:
-                cursor.close()
-                return jsonify({'Error': 'Not seller'})
+            try:
+                cursor.execute("SELECT seller FROM auction WHERE auction_id = %s", (leilaoId, ))
+                if cursor.rowcount == 0:
+                    cursor.close()
+                    return jsonify({'Error': 'Auction not found'})
+                if token.get('userId') != cursor.fetchone()[0]:
+                    cursor.close()
+                    return jsonify({'Error': 'Not seller'})
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                return jsonify({'Error': 'DB Exception, check logs'})
         with conn.cursor() as cursor:
             try:
                 cursor.execute(statement, payload)
@@ -518,20 +545,24 @@ def activity():
     content = {'Seller': [], 'Bidder': []}
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(sellerSQL, token)
-            for row in cursor:
-                content['Seller'].append({
-                    'Auction ID': row[0],
-                    'Title': row[1],
-                    'Description': row[2]
-                })
-            cursor.execute(bidderSQL, token)
-            for row in cursor:
-                content['Bidder'].append({
-                    'Auction ID': row[0],
-                    'Title': row[1],
-                    'Description': row[2]
-                })
+            try:
+                cursor.execute(sellerSQL, token)
+                for row in cursor:
+                    content['Seller'].append({
+                        'Auction ID': row[0],
+                        'Title': row[1],
+                        'Description': row[2]
+                    })
+                cursor.execute(bidderSQL, token)
+                for row in cursor:
+                    content['Bidder'].append({
+                        'Auction ID': row[0],
+                        'Title': row[1],
+                        'Description': row[2]
+                    })
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
         
     return jsonify(content)
@@ -563,22 +594,23 @@ def notifications():
     content = {'Seen': [], 'Unseen': []}
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(statement, token)
-            for row in cursor:
-                if row[2] == True:
-                    content['Seen'].append({
-                        "Date": row[0],
-                        "Message": row[1]
-                    })
-                else:
-                    content['Unseen'].append({
-                        "Date": row[0],
-                        "Message": row[1]
-                    })
             try:
+                cursor.execute(statement, token)
+                for row in cursor:
+                    if row[2] == True:
+                        content['Seen'].append({
+                            "Date": row[0],
+                            "Message": row[1]
+                        })
+                    else:
+                        content['Unseen'].append({
+                            "Date": row[0],
+                            "Message": row[1]
+                        })
                 cursor.execute(seen, token)
-            except Exception as e:
+            except psycopg2.Error as e:
                 logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -621,7 +653,7 @@ def cancelAuction(auctionId):
                         content['Status'] = 'Success'
             except psycopg2.Error as e:
                 logger.error(str(e))
-                content['Error'] = e.diag.message_primary
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -661,23 +693,27 @@ def stats():
     content = {'Sellers': [], 'Winners': []}
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(topSellers)
-            logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
-            for row in cursor:
-                content['Sellers'].append({
-                    'User': row[0],
-                    'Auctions': row[1]
-                })
-            cursor.execute(topWinners)
-            logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
-            for row in cursor:
-                content['Winners'].append({
-                    'User': row[0],
-                    'Won': row[1]
-                })
-            cursor.execute(recentAuctions)
-            logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
-            content['New Auctions'] = cursor.fetchone()[0]
+            try:
+                cursor.execute(topSellers)
+                logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
+                for row in cursor:
+                    content['Sellers'].append({
+                        'User': row[0],
+                        'Auctions': row[1]
+                    })
+                cursor.execute(topWinners)
+                logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
+                for row in cursor:
+                    content['Winners'].append({
+                        'User': row[0],
+                        'Won': row[1]
+                    })
+                cursor.execute(recentAuctions)
+                logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
+                content['New Auctions'] = cursor.fetchone()[0]
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -708,7 +744,7 @@ def ban(userId):
                 content['Status'] = 'Success'
             except psycopg2.Error as e:
                 logger.debug(str(e))
-                content['Error'] = e.diag.message_primary
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -729,7 +765,7 @@ def closeAuctions():
                 cursor.execute('CALL close_auctions()')
             except psycopg2.Error as e:
                 logger.error(str(e))
-                content['Error'] = str(e)
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
 
     return jsonify(content)
@@ -746,7 +782,12 @@ def bangers():
 # Connect to db
 def dbConn():
     try:
-        connection = psycopg2.connect(user='admin', password='projadmin', host='db', port='5432', database='auctions')
+        connection = psycopg2.connect(user='admin', 
+                                      password='projadmin', 
+                                      host='db', 
+                                      port='5432', 
+                                      database='auctions'
+                                    )
     except psycopg2.DatabaseError as e:
         logger.error(e.diag.message_primary)
         connection = None
@@ -754,13 +795,18 @@ def dbConn():
 
 # Get JWT for user
 def getToken(username, userId):
-    payload = {'userId': userId, 'username': username, 
-        'exp': datetime.now()+timedelta(minutes=30)}
+    payload = {
+        'userId': userId, 
+        'username': username, 
+        'exp': datetime.now()+timedelta(minutes=30)
+    }
+
     return jwt.encode(payload, app.secret_key, algorithm='HS256')
 
 # Read user token
 def readToken(token):
     logger.debug(f"Decoding token {token}")
+
     try:
         decoded = jwt.decode(token, app.secret_key, algorithms='HS256') 
         logger.info("Valid token")
@@ -771,6 +817,7 @@ def readToken(token):
         logger.error("Expired token signature")
     except jwt.PyJWTError as e:
         logger.error(str(e))
+        
     return decoded
 
 # Verify that user is not banned, optionally if is admin
@@ -793,15 +840,19 @@ def validate(authToken, isAdmin=False):
 
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(statement, (token.get('userId'),))
-            if cursor.rowcount == 1:
-                row = cursor.fetchone()
-                if row[0] == False:
-                    raise Exception('User is banned')
-                if isAdmin and row[1] == False:
-                    raise Exception('Not Admin')
-            else:
-                raise Exception('User does not exist')
+            try:
+                cursor.execute(statement, (token.get('userId'),))
+                if cursor.rowcount == 1:
+                    row = cursor.fetchone()
+                    if row[0] == False:
+                        raise Exception('User is banned')
+                    if isAdmin and row[1] == False:
+                        raise Exception('Not Admin')
+                else:
+                    raise Exception('User does not exist')
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                raise Exception('DB Exception, check the logs')
     conn.close()
 
     return token
