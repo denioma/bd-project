@@ -5,20 +5,28 @@
 #   David Valente Pereira Barros Leitão - 2019223148
 #   João António Correia Vaz - 2019218159
 #   Rodrigo Alexandre da Mota Machado - 2019218299
+# ----------------------------------------------------
 
 from psycopg2 import sql
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, render_template
 import logging, psycopg2, hashlib, jwt
 
 app = Flask(__name__)
 
+#---------------------------------------#
+#          Request definitions          #
+#---------------------------------------#
+
 @app.route('/')
 def landing():
+    """Renders the landing page"""
     return render_template('index.html')
 
+# Register a user
 @app.route("/dbproj/user", methods=['POST'])
 def register():
+    """Registers a user in the database"""
     logger.info("POST /dbproj/user")
     payload = request.get_json()
     required = {'username', 'password', 'email'}    
@@ -56,6 +64,7 @@ def register():
 # Authenticate a user
 @app.route('/dbproj/user', methods=['PUT'])
 def authenticate():
+    """Authenticates a user against the database"""
     logger.info("PUT /dbproj/user")
     payload = request.get_json()
     fields = set(payload.keys())
@@ -100,16 +109,17 @@ def authenticate():
 # Create a new auction
 @app.route('/dbproj/leilao', methods=['POST'])
 def newAuction():
+    """Create a new auction"""
     logger.info("POST /dbproj/leilao")
     authToken = request.headers.get('authToken')
     if authToken is None:
         return jsonify({'Error': 'Missing authToken'})
     try:
-        authToken = validate(authToken)
+        token = validate(authToken)
     except Exception as e:
         logger.debug(str(e))
         return jsonify({'Error': str(e)})
-    required = {'artigoId', 'precoMinimo', 'titulo', 'descricao', 'ends'}
+    required = {'itemId', 'minPrice', 'title', 'description', 'ends'}
     payload = request.get_json()
     if payload is None:
         return jsonify({'Error': f'Missing fields {required}'})
@@ -127,20 +137,21 @@ def newAuction():
     regularFormat = "%d-%m-%Y %H:%M:%S"
     postmanFormat = "%a %b %d %Y %H:%M:%S %Z%z"
     try:
+        # Try parsing date with regularFormat
         date = datetime.strptime(date, regularFormat)
     except ValueError:
         try:
+            # Try parsing data with postmanFormat
             date = date[:date.find(" (")]
             date = datetime.strptime(date, postmanFormat)
         except ValueError:
             return jsonify({'Error': 'Failed to parse timestamp'})
 
     statement = """INSERT INTO auction (item_id, seller, min_price, price, title, description, ends)
-                VALUES (%(artigoId)s, %(seller)s, %(precoMinimo)s, %(precoMinimo)s, %(titulo)s, %(descricao)s, %(ends)s)
+                VALUES (%(itemId)s, %(seller)s, %(minPrice)s, %(minPrice)s, %(title)s, %(description)s, %(ends)s)
                 RETURNING auction_id"""
-    
-    args = {'seller': authToken['userId'], 'artigoId': payload['artigoId'], 'precoMinimo': payload['precoMinimo'],
-            'titulo': payload['titulo'], 'descricao': payload['descricao'], 'ends': date}
+    args = payload
+    args.update({'seller': token.get('userId'), 'ends': date})
     logger.debug(args)
     
     with conn:
@@ -158,8 +169,10 @@ def newAuction():
 
     return jsonify(content)
 
+# Get auction details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['GET'])
 def getAuction(leilaoId):
+    """Gets auction details"""
     logger.info(f"GET /dbproj/leilao/{leilaoId}")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -251,6 +264,7 @@ def getAuction(leilaoId):
 # List all open auctions
 @app.route('/dbproj/leiloes', methods=['GET'])
 def listAuctions():
+    """List all open auctions"""
     logger.info("GET /dbproj/leiloes")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -286,6 +300,7 @@ def listAuctions():
 # Search on open auctions
 @app.route('/dbproj/leiloes/<keyword>', methods=['GET'])
 def searchAuctions(keyword):
+    """Search on open auctions"""
     logger.info(f"GET /dbproj/leiloes/{keyword}")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -329,6 +344,7 @@ def searchAuctions(keyword):
 # Bid on an open auction
 @app.route('/dbproj/licitar/leilao/<leilaoId>/<licitacao>', methods=['GET'])
 def bidAuction(leilaoId, licitacao):
+    """Bid on an open auction"""
     logger.info(f"GET /dbproj/licitar/leilao/{leilaoId}/{licitacao}")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -362,9 +378,10 @@ def bidAuction(leilaoId, licitacao):
     
     return jsonify(content)
 
-# Change auction details
+# Update auction details
 @app.route('/dbproj/leilao/<leilaoId>', methods=['PUT'])
-def changeAuction(leilaoId):
+def updateAuction(leilaoId):
+    """Update auction details"""
     logger.info(f"PUT /dbproj/leilao/{leilaoId}")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -388,9 +405,13 @@ def changeAuction(leilaoId):
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
     
-    commonSQL = sql.SQL("UPDATE auction SET {fields} WHERE auction_id = %(auctionId)s")
-    titleSQL = sql.SQL("title = %(title)s")
-    descriptionSQL = sql.SQL("description = %(description)s")
+    if ('title', 'description') in present:
+        fields = "title = %(title)s, description = %(description)s"
+    elif 'title' in present:
+        fields = "title = %(title)s"
+    elif 'description' in present:
+        fields = "description = %(description)s"
+    statement = f"UPDATE auction SET {fields} WHERE auction_id = %(auctionId)s"
 
     payload.update({'auctionId': leilaoId})
     logger.debug(payload)
@@ -405,20 +426,13 @@ def changeAuction(leilaoId):
                 cursor.close()
                 return jsonify({'Error': 'Not seller'})
         with conn.cursor() as cursor:
-            if ('title', 'description') in present:
-                query = commonSQL.format(fields=sql.SQL(', ').join([titleSQL, descriptionSQL]))        
-            elif 'title' in present:
-                query = commonSQL.format(fields=titleSQL)
-            elif 'description' in present:
-                query = commonSQL.format(fields=descriptionSQL)
-            
             try:
-                cursor.execute(query, payload)
+                cursor.execute(statement, payload)
                 logger.debug(cursor.query)
                 content['Status'] = 'Success'
             except psycopg2.Error as e:
                 logger.error(e.diag.message_primary)
-                content['Error'] = 'Something went wrong'
+                content['Error'] = 'DB Exception, check logs'
     conn.close()
     
     return jsonify(content)
@@ -426,6 +440,7 @@ def changeAuction(leilaoId):
 # Post a message
 @app.route('/dbproj/message/<leilaoId>', methods=['POST'])
 def postMessage(leilaoId):
+    """Post a message in an auction's mural"""
     logger.info(f"POST /dbproj/message/{leilaoId}")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -479,6 +494,7 @@ def postMessage(leilaoId):
 # Get user activity
 @app.route('/dbproj/user/activity', methods=['GET'])
 def activity():
+    """Gets user's activity"""
     logger.info(f"POST /dbproj/user/activity")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -520,8 +536,10 @@ def activity():
         
     return jsonify(content)
 
+# Get user notifications
 @app.route('/dbproj/user/notifications', methods=['GET'])
 def notifications():
+    """Gets user's notifications"""
     logger.info('GET /dbproj/user/notifications')
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -565,8 +583,10 @@ def notifications():
 
     return jsonify(content)
 
+# Cancel an auction
 @app.route('/dbproj/admin/cancel/<auctionId>', methods=['POST'])
 def cancelAuction(auctionId):
+    """Cancels an open auction"""
     logger.info(f"POST /dbproj/leiloes/{auctionId}")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -581,24 +601,27 @@ def cancelAuction(auctionId):
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
 
-    check = "SELECT cancelled FROM auction WHERE auction_id = %s FOR UPDATE"
+    check = "SELECT ends, cancelled FROM auction WHERE auction_id = %s FOR UPDATE"
     statement = "UPDATE auction SET cancelled = true WHERE auction_id = %s"
     content = dict()
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(check, (auctionId,))
-            if cursor.rowcount == 0:
-                content['Error'] = 'Auction does not exist'
-            else:
-                if cursor.fetchone()[0] == True:
-                    content['Error'] = 'Auction already cancelled'
+            try:
+                cursor.execute(check, (auctionId,))
+                if cursor.rowcount == 0:
+                    content['Error'] = 'Auction does not exist'
                 else:
-                    try:
+                    row = cursor.fetchone()
+                    if row[0] < datetime.now:
+                        content['Error'] = 'Auction already ended'
+                    elif row[1] == True:
+                        content['Error'] = 'Auction already cancelled'
+                    else:
                         cursor.execute(statement, (auctionId,))
                         content['Status'] = 'Success'
-                    except psycopg2.Error as e:
-                        logger.error(str(e))
-                        content['Error'] = e.diag.message_primary
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = e.diag.message_primary
     conn.close()
 
     return jsonify(content)
@@ -606,6 +629,7 @@ def cancelAuction(auctionId):
 # Get application statistics
 @app.route('/dbproj/admin/stats', methods=['GET'])
 def stats():
+    """Gets application's statistics"""
     logger.debug("GET /dbproj/admin/stats")
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -658,8 +682,10 @@ def stats():
 
     return jsonify(content)
 
+# Ban a user
 @app.route('/dbproj/admin/ban/<userId>', methods=['POST'])
 def ban(userId):
+    """Bans a user"""
     logger.info(f'POST /dbproj/admin/ban/{userId}')
     authToken = request.headers.get('authToken')
     if authToken is None:
@@ -687,8 +713,10 @@ def ban(userId):
 
     return jsonify(content)
 
+# Check for closed auctions
 @app.route('/dbroj/close', methods=['POST'])
 def closeAuctions():
+    """Checks for closed auctions"""
     logger.info('POST /dbproj/close')
     conn = dbConn()
     if conn is None:
@@ -705,10 +733,15 @@ def closeAuctions():
     conn.close()
 
     return jsonify(content)
+        
 # Not so hidden easter egg
 @app.route('/bangers')
-def banger1():
+def bangers():
     return render_template("gift.html")
+
+#------------------------------------#
+#          Helper Functions          #
+#------------------------------------#
 
 # Connect to db
 def dbConn():
@@ -721,7 +754,8 @@ def dbConn():
 
 # Get JWT for user
 def getToken(username, userId):
-    payload = {'userId': userId, 'username': username}
+    payload = {'userId': userId, 'username': username, 
+        'exp': datetime.now()+timedelta(minutes=30)}
     return jwt.encode(payload, app.secret_key, algorithm='HS256')
 
 # Read user token
@@ -729,14 +763,19 @@ def readToken(token):
     logger.debug(f"Decoding token {token}")
     try:
         decoded = jwt.decode(token, app.secret_key, algorithms='HS256') 
-        logger.debug("Valid token")
+        logger.info("Valid token")
     except jwt.InvalidSignatureError:
-        logger.debug(f"Invalid token signature")
+        logger.error("Invalid token signature")
         decoded = None
+    except jwt.ExpiredSignatureError:
+        logger.error("Expired token signature")
+    except jwt.PyJWTError as e:
+        logger.error(str(e))
     return decoded
 
-# Token may be valid, but user not registered or banned
+# Verify that user is not banned, optionally if is admin
 def validate(authToken, isAdmin=False):
+    """Verifies that user is not banned, optionally checks if is admin"""
     token = readToken(authToken)
     if token is None:
         raise Exception('Invalid token')
@@ -745,32 +784,31 @@ def validate(authToken, isAdmin=False):
     if conn is None:
         raise Exception('Connection to db failed')
 
-    commonSQL = sql.SQL("SELECT {fields} from db_user WHERE username = %s")
-    cols = [sql.Identifier('user_id'), sql.Identifier('valid')]
     if isAdmin:
-        cols.append(sql.Identifier('admin'))
+        fields = "valid, admin"
+    else:
+        fields = "valid"
+
+    statement = f"SELECT {fields} from db_user WHERE user_id = %s"
+
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(commonSQL.format(fields=sql.SQL(', ').join(cols)), (token.get('username'),))
+            cursor.execute(statement, (token.get('userId'),))
             if cursor.rowcount == 1:
                 row = cursor.fetchone()
-                if row[0] == token.get('userId'):
-                    if row[1] == False:
-                        raise Exception('User is banned')
-                    if isAdmin and row[2] == False:
-                        raise Exception('Not Admin')
-                else:
-                    raise Exception('User ID does not match')
+                if row[0] == False:
+                    raise Exception('User is banned')
+                if isAdmin and row[1] == False:
+                    raise Exception('Not Admin')
             else:
                 raise Exception('User does not exist')
-
     conn.close()
 
     return token
 
-##########################
+#------------------------#
 #          Main          #
-##########################
+#------------------------#
 if __name__ == '__main__':
     # Logger setup
     logging.basicConfig(filename="logs/log_file.log")

@@ -206,7 +206,7 @@ BEGIN
     VALUES (NEW.auction_id, id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
     RETURN NEW;
 END;
-$$; 
+$$;
 
 DROP TRIGGER IF EXISTS hist_update ON auction;
 CREATE TRIGGER hist_update AFTER INSERT OR UPDATE OF title, description ON auction
