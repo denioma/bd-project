@@ -199,10 +199,11 @@ def getAuction(leilaoId):
                     t1.username, t1.min_price, t1.auction_id, t1.cancelled, 
                     t2.last_bidder FROM (auction JOIN db_user 
                     ON auction.seller = db_user.user_id) as t1,
-                    (SELECT username as last_bidder 
-                    FROM auction JOIN db_user
+                    (SELECT auction_id, username as last_bidder 
+                    FROM auction FULL OUTER JOIN db_user
                     ON auction.last_bidder = db_user.user_id) as t2
-                    WHERE auction_id = %s;"""
+                    WHERE t1.auction_id = t2.auction_id 
+                    AND t1.auction_id = %s"""
     historySQL = """SELECT username, bid_date, price 
                     FROM bid INNER JOIN db_user
                     ON bid.bidder = db_user.user_id                  
@@ -340,7 +341,7 @@ def searchAuctions(keyword):
         itemId = int(keyword)
         statement += " OR item_id = %(itemId)s"
     except:
-        pass
+        itemId = None
 
     with conn:
         with conn.cursor() as cursor:
@@ -428,12 +429,13 @@ def updateAuction(leilaoId):
     if conn is None:
         return jsonify({'Error': 'Connection to db failed'})
     
-    if ('title', 'description') in present:
+    if {'title', 'description'}.issubset(present):
         fields = "title = %(title)s, description = %(description)s"
     elif 'title' in present:
         fields = "title = %(title)s"
     elif 'description' in present:
         fields = "description = %(description)s"
+    logger.debug(fields)
     statement = f"UPDATE auction SET {fields} WHERE auction_id = %(auctionId)s"
 
     payload.update({'auctionId': leilaoId})
@@ -442,13 +444,18 @@ def updateAuction(leilaoId):
     with conn:
         with conn.cursor() as cursor:
             try:
-                cursor.execute("SELECT seller FROM auction WHERE auction_id = %s", (leilaoId, ))
+                cursor.execute("SELECT seller, cancelled, ends FROM auction WHERE auction_id = %s", (leilaoId, ))
                 if cursor.rowcount == 0:
                     cursor.close()
                     return jsonify({'Error': 'Auction not found'})
-                if token.get('userId') != cursor.fetchone()[0]:
+                row = cursor.fetchone()
+                if token.get('userId') != row[0]:
                     cursor.close()
                     return jsonify({'Error': 'Not seller'})
+                elif row[1] == True:
+                    return jsonify({'Error': 'Auction has been cancelled'})
+                elif row[2] < datetime.now():
+                    return jsonify({'Error': 'Auction is closed'})
             except psycopg2.Error as e:
                 logger.error(str(e))
                 return jsonify({'Error': 'DB Exception, check logs'})
@@ -505,9 +512,11 @@ def postMessage(leilaoId):
                     elif row[1] < datetime.now():
                         content['Error'] = 'Auction has ended'
                     else:
-                        statement = """INSERT INTO mural (auction_id, user_id, m_date, msg)
-                                    VALUES (%(auctionId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
-                        args = {'auctionId': leilaoId, 'userId': userId, 'message': msg}
+                        cursor.execute("SELECT COUNT(*)+1 FROM mural WHERE auction_id = %s", (leilaoId,))
+                        muralId = cursor.fetchone()[0]
+                        statement = """INSERT INTO mural (auction_id, user_id, m_id, m_date, msg)
+                                    VALUES (%(auctionId)s, %(muralId)s, %(userId)s, CURRENT_TIMESTAMP, %(message)s)"""
+                        args = {'auctionId': leilaoId, 'userId': userId, 'muralId': muralId, 'message': msg}
                         
                         cursor.execute(statement, args)
                         content['Status'] = 'Success'
@@ -634,7 +643,7 @@ def cancelAuction(auctionId):
         return jsonify({'Error': 'Connection to db failed'})
 
     check = "SELECT ends, cancelled FROM auction WHERE auction_id = %s FOR UPDATE"
-    statement = "UPDATE auction SET cancelled = true WHERE auction_id = %s"
+    statement = "UPDATE auction SET cancelled = true, ongoing = false WHERE auction_id = %s"
     content = dict()
     with conn:
         with conn.cursor() as cursor:
@@ -806,18 +815,7 @@ def getToken(username, userId):
 # Read user token
 def readToken(token):
     logger.debug(f"Decoding token {token}")
-
-    try:
-        decoded = jwt.decode(token, app.secret_key, algorithms='HS256') 
-        logger.info("Valid token")
-    except jwt.InvalidSignatureError:
-        logger.error("Invalid token signature")
-        decoded = None
-    except jwt.ExpiredSignatureError:
-        logger.error("Expired token signature")
-    except jwt.PyJWTError as e:
-        logger.error(str(e))
-        
+    decoded = jwt.decode(token, app.secret_key, algorithms='HS256') 
     return decoded
 
 # Verify that user is not banned, optionally if is admin

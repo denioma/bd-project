@@ -26,7 +26,7 @@ CREATE TABLE db_user (
 
 CREATE TABLE auction (
 	auction_id 		SERIAL,
-	item_id			VARCHAR(512) NOT NULL,
+	item_id			NUMERIC(13,0) NOT NULL,
 	min_price    	NUMERIC(8,2) NOT NULL,
 	price			NUMERIC(8,2) NOT NULL,
 	title			VARCHAR(128) NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE bid (
 CREATE TABLE mural (
 	auction_id	INTEGER,
 	user_id 	INTEGER,
-	m_id      	SERIAL,
+	m_id      	INTEGER,
 	m_date		TIMESTAMP NOT NULL,
 	msg			VARCHAR(128) NOT NULL,
 	PRIMARY KEY(auction_id, user_id, m_id)

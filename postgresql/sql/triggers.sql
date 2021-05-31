@@ -73,6 +73,9 @@ DECLARE
     auction_cursor CURSOR FOR
         SELECT DISTINCT auction_id FROM bid
         WHERE bidder = v_user;
+    cancel_auctions CURSOR FOR
+        SELECT auction_id FROM auction
+        WHERE seller = v_user;
 BEGIN
     SELECT valid INTO is_valid FROM db_user WHERE user_id = v_user;
 
@@ -86,6 +89,11 @@ BEGIN
     ALTER TABLE bid DISABLE TRIGGER bid_open;
 
     UPDATE db_user SET valid = false WHERE user_id = v_user;
+
+    FOR row in cancel_auctions LOOP
+        UPDATE auction SET cancelled = true, ongoing = false 
+        WHERE auction_id = row.auction_id;
+    END LOOP;
     
     FOR row in auction_cursor LOOP
         -- Skip closed or cancelled auctions
@@ -182,7 +190,7 @@ BEGIN
         RAISE EXCEPTION 'Seller cannot bid';
     ELSIF new.bid_id > 1 AND current_price >= new.price THEN
         RAISE EXCEPTION 'Bid is not higher than current price';
-    ELSIF new.bid_id = 1 AND current_price > new.price THEN;
+    ELSIF new.bid_id = 1 AND current_price > new.price THEN
         RAISE EXCEPTION 'First bid cannot be lower than starting price';
     ELSE
         RETURN NEW;
@@ -202,10 +210,11 @@ AS $$
 DECLARE
     id INTEGER;
 BEGIN
-    SELECT COUNT(*)+1 INTO id FROM history WHERE auction_id = NEW.auction_id;
-
-    INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
-    VALUES (NEW.auction_id, id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
+    SELECT COUNT(*)+1 INTO id FROM history WHERE auction_id = NEW.auction_id; 
+    IF old.title IS DISTINCT FROM new.title OR old.description IS DISTINCT FROM new.description THEN
+        INSERT INTO history (auction_id, hist_id, hist_date, title, description) 
+        VALUES (NEW.auction_id, id, CURRENT_TIMESTAMP, NEW.title, NEW.description);
+    END IF;
     RETURN NEW;
 END;
 $$;
