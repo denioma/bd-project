@@ -90,12 +90,11 @@ BEGIN
         -- Skip closed or cancelled auctions
         SELECT ends, cancelled INTO end_date, is_cancelled FROM auction 
         WHERE auction_id = row.auction_id;
-        IF is_cancelled OR ends < CURRENT_TIMESTAMP THEN
-            CONTINUE
-        END IF;
+    
+        CONTINUE WHEN is_cancelled OR ends < CURRENT_TIMESTAMP;
 
         -- Invalidate all bids including and after the banned user's first bid
-        SELECT MIN(bid_id), price INTO invalid_from, price FROM bid 
+        SELECT MIN(bid_id) INTO invalid_from FROM bid 
         WHERE user_id = v_user AND auction_id = row.auction_id;
         UPDATE bid SET valid = false WHERE auction_id = row.auction_id 
         AND bid_id >= invalid_from;
@@ -105,11 +104,11 @@ BEGIN
         
         -- Get last valid bid_id and bidder
         SELECT bid_id, bidder INTO valid_id, valid_user FROM bid WHERE bid_id = (
-            SELECT MAX(bid_id) FROM bid WHERE VALID;
+            SELECT MAX(bid_id) FROM bid WHERE valid
         );
         
         -- Get the valid_price
-        If valid_id < invalid_from THEN
+        IF valid_id < invalid_from THEN
             SELECT price INTO valid_price FROM bid WHERE bid_id = valid_id;
         ELSE
             SELECT price INTO valid_price FROM bid WHERE bid_id = invalid_from; 
