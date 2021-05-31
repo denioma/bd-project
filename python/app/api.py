@@ -7,6 +7,7 @@
 #   Rodrigo Alexandre da Mota Machado - 2019218299
 
 from datetime import datetime
+from os import stat
 from flask import Flask, json, jsonify, request, render_template
 from psycopg2 import sql
 import hashlib
@@ -595,6 +596,7 @@ def cancelAuction(auctionId):
 
     return jsonify(content)
 
+# Get application statistics
 @app.route('/dbproj/admin/stats', methods=['GET'])
 def stats():
     logger.debug("GET /dbproj/admin/stats")
@@ -645,6 +647,35 @@ def stats():
             cursor.execute(recentAuctions)
             logger.debug(f'Query {cursor.query} returned {cursor.rowcount} rows')
             content['New Auctions'] = cursor.fetchone()[0]
+    conn.close()
+
+    return jsonify(content)
+
+@app.route('/dbproj/admin/ban/<userId>', methods=['POST'])
+def ban(userId):
+    logger.info(f'POST /dbproj/admin/ban/{userId}')
+    authToken = request.headers.get('authToken')
+    if authToken is None:
+        return jsonify({'Error': 'Missing authToken'})
+    try:
+        token = validate(authToken, isAdmin=True)
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({'Error': str(e)})
+
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+    
+    content = dict()
+    with conn:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute('CALL ban(%s)', (userId,))
+                content['Status'] = 'Success'
+            except psycopg2.Error as e:
+                logger.debug(str(e))
+                content['Error'] = e.diag.message_primary
     conn.close()
 
     return jsonify(content)
