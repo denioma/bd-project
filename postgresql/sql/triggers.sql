@@ -1,3 +1,11 @@
+-- Databases - 2020/2021
+-- Final Project - Procedures, functions and triggers in PL/pgSQL
+
+-- Authors:
+--   David Valente Pereira Barros Leitão - 2019223148
+--   João António Correia Vaz - 2019218159
+--   Rodrigo Alexandre da Mota Machado - 2019218299
+
 -- Not a trigger, but useful to many of them
 CREATE OR REPLACE PROCEDURE notify(v_user INTEGER, v_date TIMESTAMP, v_msg VARCHAR)
 LANGUAGE plpgsql
@@ -9,6 +17,42 @@ BEGIN
     
     INSERT INTO notifs (user_id, n_id, n_date, msg) 
     VALUES (v_user, id, v_date, v_msg); 
+END;
+$$;
+
+-- Close an auction
+CREATE OR REPLACE PROCEDURE close_auctions()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    cur CURSOR FOR
+        SELECT auction_id, seller, last_bidder as winner, username as name_winner, ends 
+        FROM auction JOIN db_user ON auction.last_bidder = db_user.user_id
+        WHERE ongoing;
+    bid_row RECORD;
+    close_stamp TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    FOR row IN cur LOOP
+        IF row.ends < close_stamp THEN
+            UPDATE auction SET ongoing = false WHERE auction_id = row.auction_id;
+            CALL notify(row.winner, close_stamp,
+                '[System] You won auction #' || row.auction_id ||'.'
+            );
+
+            CALL notify(row.seller, close_stamp,
+                '[System] Your auction (' || row.auction_id || ') is now closed. The winner was ' 
+                    || row.name_winner || '.'
+            );
+
+            FOR bid_row IN 
+            SELECT bidder FROM bid WHERE bidder != row.winner LOOP
+                CALL notify(bid_row.bidder, close_stamp, 
+                    '[System] Auction #' || row.auction_id || ' is now closed. The winner was ' 
+                    || row.name_winner || '.'
+                );
+            END LOOP;
+        END IF;
+    END LOOP;
 END;
 $$;
 
@@ -175,7 +219,7 @@ BEGIN
     FOR row IN cur LOOP
         IF NOT row.user_id = auction_seller AND NOT row.user_id = new.user_id THEN 
             CALL notify(row.user_id, notify_date,
-                '[Auction # ' || new.auction_id || '] ' || mural_user || ': ' || new.msg
+                '[Auction #' || new.auction_id || '] ' || mural_user || ': ' || new.msg
             );  
         END IF;
     END LOOP;
