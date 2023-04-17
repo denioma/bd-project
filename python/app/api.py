@@ -6,13 +6,10 @@
 #   João António Correia Vaz - 2019218159
 #   Rodrigo Alexandre da Mota Machado - 2019218299
 
-from datetime import datetime
-from os import stat
-from flask import Flask, json, jsonify, request, render_template
 from psycopg2 import sql
-import hashlib
-import jwt
-import logging, psycopg2
+from datetime import datetime
+from flask import Flask, jsonify, request, render_template
+import logging, psycopg2, hashlib, jwt
 
 app = Flask(__name__)
 
@@ -178,10 +175,13 @@ def getAuction(leilaoId):
         return jsonify({'Error': 'Connection to db failed'})
 
     content = dict()
-    auctionSQL = """SELECT price, title, description, ends, username, 
-                    min_price, auction_id, cancelled
-                    FROM auction INNER JOIN db_user 
-                    ON auction.seller = db_user.user_id
+    auctionSQL = """SELECT t1.price, t1.title, t1.description, t1.ends,
+                    t1.username, t1.min_price, t1.auction_id, t1.cancelled, 
+                    t2.last_bidder FROM (auction JOIN db_user 
+                    ON auction.seller = db_user.user_id) as t1,
+                    (SELECT username as last_bidder 
+                    FROM auction JOIN db_user
+                    ON auction.last_bidder = db_user.user_id) as t2
                     WHERE auction_id = %s;"""
     historySQL = """SELECT username, bid_date, price 
                     FROM bid INNER JOIN db_user
@@ -203,6 +203,8 @@ def getAuction(leilaoId):
                 logger.debug(f"{row}")
                 cancelled = row[7]
                 ends = row[3]
+                if row[8] is not None:
+                    content['Last Bidder'] = row[8]
                 if cancelled:
                     content['Status'] = 'Cancelled'
                 elif ends < datetime.now():
@@ -301,17 +303,23 @@ def searchAuctions(keyword):
         return jsonify({'Error': 'Connection to db failed'})
     
     statement = """SELECT auction.item_id, auction.description
-                FROM auction WHERE auction.item_id = %(keyword)s
-                OR auction.description LIKE %(regex)s"""
+                FROM auction WHERE auction.description LIKE %(regex)s"""
+
+    # Try parse keyword to int
+    try:
+        itemId = int(keyword)
+        statement += " OR item_id = %(itemId)s"
+    except:
+        pass
 
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(statement, {'keyword': keyword, 'regex': f'%{keyword}%'})
+            cursor.execute(statement, {'itemId': itemId, 'regex': f'%{keyword}%'})
             logger.debug(f"Query {cursor.query} returned {cursor.rowcount} rows")
             if cursor.rowcount > 0: 
                 content = []
                 for row in cursor:
-                    content.append({'itemId': row[0], 'description': row[1]})
+                    content.append({'itemId': str(row[0]), 'description': row[1]})
             else: 
                 content = {'Error': 'No results found'}
     conn.close()
@@ -319,7 +327,6 @@ def searchAuctions(keyword):
     return jsonify(content)
 
 # Bid on an open auction
-# TODO Stop bid on seller's own listing
 @app.route('/dbproj/licitar/leilao/<leilaoId>/<licitacao>', methods=['GET'])
 def bidAuction(leilaoId, licitacao):
     logger.info(f"GET /dbproj/licitar/leilao/{leilaoId}/{licitacao}")
@@ -680,6 +687,24 @@ def ban(userId):
 
     return jsonify(content)
 
+@app.route('/dbroj/close', methods=['POST'])
+def closeAuctions():
+    logger.info('POST /dbproj/close')
+    conn = dbConn()
+    if conn is None:
+        return jsonify({'Error': 'Connection to db failed'})
+
+    content = dict()
+    with conn:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute('CALL close_auctions()')
+            except psycopg2.Error as e:
+                logger.error(str(e))
+                content['Error'] = str(e)
+    conn.close()
+
+    return jsonify(content)
 # Not so hidden easter egg
 @app.route('/bangers')
 def banger1():

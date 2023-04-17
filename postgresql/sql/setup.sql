@@ -5,6 +5,7 @@
 --   David Valente Pereira Barros Leitão - 2019223148
 --   João António Correia Vaz - 2019218159
 --   Rodrigo Alexandre da Mota Machado - 2019218299
+------------------------------------------------------
 
 DROP TABLE IF EXISTS notifs;
 DROP TABLE IF EXISTS history;
@@ -25,7 +26,7 @@ CREATE TABLE db_user (
 
 CREATE TABLE auction (
 	auction_id 		SERIAL,
-	item_id			VARCHAR(512),
+	item_id			VARCHAR(512) NOT NULL,
 	min_price    	NUMERIC(8,2) NOT NULL,
 	price			NUMERIC(8,2) NOT NULL,
 	title			VARCHAR(128) NOT NULL,
@@ -42,7 +43,7 @@ CREATE TABLE bid (
 	auction_id		INTEGER,
 	bidder 			INTEGER,
 	bid_id			INTEGER,
-	bid_date		TIMESTAMP,
+	bid_date		TIMESTAMP NOT NULL,
 	price			NUMERIC(8,2) NOT NULL,
 	valid			BOOL NOT NULL DEFAULT true,
 	PRIMARY KEY(auction_id, bidder, bid_id)
@@ -61,8 +62,8 @@ CREATE TABLE history (
 	auction_id 		INTEGER,
 	hist_id	    	INTEGER,
 	hist_date		TIMESTAMP NOT NULL,
-	title	    	VARCHAR(128),
-	description 	VARCHAR(512),
+	title	    	VARCHAR(128) NOT NULL,
+	description 	VARCHAR(512) NOT NULL,
 	PRIMARY KEY(auction_id, hist_id)
 );
 
